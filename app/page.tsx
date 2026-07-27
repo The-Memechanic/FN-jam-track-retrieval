@@ -1,23 +1,15 @@
+import Link from "next/link";
 import SearchClient from "@/components/SearchClient";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-neutral-50 px-4 py-12">
-      <h1 className="text-3xl font-semibold text-center mb-2">
+    <main className="min-h-screen bg-neutral-100 px-4 py-12 text-neutral-900 transition-colors dark:bg-neutral-900 dark:text-neutral-100">
+      <h1 className="mb-2 text-center text-3xl font-semibold">
         Fortnite Jam Track Search
       </h1>
-      <p className="text-center text-neutral-500 mb-6">
+      <p className="mb-6 text-center text-neutral-600 dark:text-neutral-400">
         Search for Fortnite Jam Tracks and find the information you need.
       </p>
-      <div className="mb-8 flex justify-center">
-        <a
-          href="/similarity"
-          className="inline-flex items-center rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-700"
-        >
-          Try similarity-based matching
-        </a>
-      </div>
-
       <SearchClient />
     </main>
   );

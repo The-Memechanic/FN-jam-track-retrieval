@@ -2,6 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: light;
+}
+
+html.dark {
+  background-color: #0a0a0a;
+}
+
 body {
   color: #171717;
+  background-color: #f8fafc;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+html.dark body {
+  color: #f5f5f5;
+  background-color: #0a0a0a;
 }

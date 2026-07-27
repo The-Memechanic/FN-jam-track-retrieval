@@ -17,6 +17,8 @@ type RankedSong = {
   keySimilarity: number;
 };
 
+const PAGE_SIZE = 10; // 5 columns x 2 rows
+
 const toDisplayLabel = (row: TrackRow) => {
   if (row.artist && row.song) {
     return `${row.song} — ${row.artist}`;
@@ -138,8 +140,22 @@ const computeRanking = (
         keySimilarity,
       };
     })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 10);
+    .sort((a, b) => b.score - a.score);
+};
+
+// Score → ring color, from cool blue (low match) to warm amber (high match)
+const getScoreRingClass = (score: number) => {
+  if (score >= 0.75) return "ring-amber-400/70 dark:ring-amber-400/60";
+  if (score >= 0.5) return "ring-teal-400/70 dark:ring-teal-400/50";
+  if (score >= 0.25) return "ring-sky-400/60 dark:ring-sky-500/40";
+  return "ring-neutral-300/70 dark:ring-neutral-600/50";
+};
+
+const getScoreTextClass = (score: number) => {
+  if (score >= 0.75) return "text-amber-600 dark:text-amber-400";
+  if (score >= 0.5) return "text-teal-600 dark:text-teal-400";
+  if (score >= 0.25) return "text-sky-600 dark:text-sky-400";
+  return "text-neutral-500 dark:text-neutral-400";
 };
 
 export default function SimilaritySearchClient() {
@@ -150,9 +166,9 @@ export default function SimilaritySearchClient() {
   const [selectedSongKey, setSelectedSongKey] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [draftWeights, setDraftWeights] = useState<WeightState>({ bpm: 0.5, key: 0.5 });
-  const [activeWeights, setActiveWeights] = useState<WeightState>({ bpm: 0.5, key: 0.5 });
   const [ranking, setRanking] = useState<RankedSong[]>([]);
   const [hasCalculated, setHasCalculated] = useState(false);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     async function loadRows() {
@@ -206,22 +222,12 @@ export default function SimilaritySearchClient() {
 
     const nextRanking = computeRanking(selectedRow, rows, draftWeights);
     setRanking(nextRanking);
-    setActiveWeights(draftWeights);
     setHasCalculated(true);
   }, [draftWeights, rows, selectedRow]);
 
-  const handleRecalculate = () => {
-    if (!selectedRow) {
-      setRanking([]);
-      setHasCalculated(false);
-      return;
-    }
-
-    const nextRanking = computeRanking(selectedRow, rows, draftWeights);
-    setRanking(nextRanking);
-    setActiveWeights(draftWeights);
-    setHasCalculated(true);
-  };
+  useEffect(() => {
+    setPage(1);
+  }, [selectedRow, draftWeights]);
 
   const handleBpmWeightChange = (value: number) => {
     const clampedValue = clampWeight(value);
@@ -233,200 +239,269 @@ export default function SimilaritySearchClient() {
     setDraftWeights({ bpm: clampWeight(1 - clampedValue), key: clampedValue });
   };
 
+  const totalPages = Math.max(1, Math.ceil(ranking.length / PAGE_SIZE));
+  const paginatedRanking = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return ranking.slice(start, start + PAGE_SIZE);
+  }, [page, ranking]);
+
+  const goToPage = (next: number) => {
+    const clamped = Math.max(1, Math.min(totalPages, next));
+    setPage(clamped);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+    }
+  };
+
   return (
-    <div className="mx-auto w-full max-w-6xl rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+    <div className="mx-auto w-full max-w-6xl">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold text-neutral-900">Similarity search</h2>
-          <p className="text-sm text-neutral-600">Pick a song, then rank others by BPM and key similarity.</p>
-        </div>
         <Link
           href="/"
-          className="inline-flex items-center justify-center rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
+          className="inline-flex items-center justify-center rounded-lg border bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-neutral-200"
         >
           Back to main search
         </Link>
       </div>
 
       {loading ? (
-        <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-6 text-center text-neutral-600">
+        <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-6 text-center text-neutral-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400">
           Loading tracks…
         </div>
       ) : error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-sm text-red-700">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
           Couldn&apos;t load tracks: {error}
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="space-y-5">
-            <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
-              <label className="mb-2 block text-sm font-medium text-neutral-700" htmlFor="song-search">
-                Search for a song
-              </label>
-              <div className="relative">
-                <input
-                  id="song-search"
-                  value={query}
-                  onChange={(event) => {
-                    setQuery(event.target.value);
-                    setSelectedSongKey(null);
-                    setShowSuggestions(true);
-                  }}
-                  onFocus={() => setShowSuggestions(true)}
-                  onBlur={() => {
-                    window.setTimeout(() => setShowSuggestions(false), 120);
-                  }}
-                  placeholder="Type a song name…"
-                  className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none ring-0 focus:border-neutral-900"
-                />
-                {suggestions.length > 0 ? (
-                  <ul className="absolute z-10 mt-2 max-h-64 w-full overflow-auto rounded-lg border border-neutral-200 bg-white shadow-lg">
-                    {suggestions.map((song) => {
-                      const label = toDisplayLabel(song);
-                      return (
-                        <li key={toRowKey(song)}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedSongKey(toRowKey(song));
-                              setQuery(label);
-                              setShowSuggestions(false);
-                            }}
-                            className="flex w-full flex-col items-start px-3 py-2 text-left text-sm text-neutral-700 transition hover:bg-neutral-50"
-                          >
-                            <span className="font-medium text-neutral-900">{song.song}</span>
-                            <span className="text-xs text-neutral-500">{song.artist || "Unknown artist"}</span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : null}
-              </div>
-              <p className="mt-2 text-xs text-neutral-500">
-                Suggestions include the artist name when it helps distinguish tracks with the same title.
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-neutral-200 bg-white p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-base font-semibold text-neutral-900">Similarity weights</h3>
-                  <p className="text-sm text-neutral-600">Adjust the slider, then press the button below to recalculate the ranking.</p>
+        <>
+          <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="space-y-5">
+              <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800">
+                <label className="mb-2 block text-sm font-medium text-neutral-700 dark:text-neutral-300" htmlFor="song-search">
+                  Search for a song
+                </label>
+                <div className="relative">
+                  <input
+                    id="song-search"
+                    value={query}
+                    onChange={(event) => {
+                      setQuery(event.target.value);
+                      setSelectedSongKey(null);
+                      setShowSuggestions(true);
+                    }}
+                    onFocus={() => setShowSuggestions(true)}
+                    onBlur={() => {
+                      window.setTimeout(() => setShowSuggestions(false), 120);
+                    }}
+                    placeholder="Type a song name…"
+                    className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none ring-0 focus:border-neutral-800 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                  />
+                  {suggestions.length > 0 ? (
+                    <ul className="absolute z-10 mt-2 max-h-64 w-full overflow-auto rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+                      {suggestions.map((song) => {
+                        const label = toDisplayLabel(song);
+                        return (
+                          <li key={toRowKey(song)}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedSongKey(toRowKey(song));
+                                setQuery(label);
+                                setShowSuggestions(false);
+                              }}
+                              className="flex w-full flex-col items-start px-3 py-2 text-left text-sm text-neutral-700 transition hover:bg-neutral-50 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                            >
+                              <span className="font-medium text-neutral-900 dark:text-neutral-100">{song.song}</span>
+                              <span className="text-xs text-neutral-500 dark:text-neutral-400">{song.artist || "Unknown artist"}</span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : null}
                 </div>
               </div>
 
-              <div className="mt-4 space-y-4">
-                <label className="block text-sm font-medium text-neutral-700">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span>BPM weight</span>
-                    <span className="text-neutral-500">{draftWeights.bpm.toFixed(2)}</span>
+              <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-800">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Similarity weights</h3>
+                    <p className="text-sm text-neutral-600 dark:text-neutral-400">Adjust the slider to recalculate the ranking.</p>
                   </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={draftWeights.bpm}
-                    onChange={(event) => handleBpmWeightChange(Number(event.target.value))}
-                    className="w-full accent-neutral-900"
-                  />
-                </label>
+                </div>
 
-                <label className="block text-sm font-medium text-neutral-700">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span>Key weight</span>
-                    <span className="text-neutral-500">{draftWeights.key.toFixed(2)}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={draftWeights.key}
-                    onChange={(event) => handleKeyWeightChange(Number(event.target.value))}
-                    className="w-full accent-neutral-900"
-                  />
-                </label>
+                <div className="mt-4 space-y-4">
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span>BPM weight</span>
+                      <span className="text-neutral-500 dark:text-neutral-300">{draftWeights.bpm.toFixed(2)}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={draftWeights.bpm}
+                      onChange={(event) => handleBpmWeightChange(Number(event.target.value))}
+                      className="w-full accent-neutral-900 dark:accent-neutral-400"
+                    />
+                  </label>
+
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span>Key weight</span>
+                      <span className="text-neutral-500 dark:text-neutral-300">{draftWeights.key.toFixed(2)}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={draftWeights.key}
+                      onChange={(event) => handleKeyWeightChange(Number(event.target.value))}
+                      className="w-full accent-neutral-900 dark:accent-neutral-400"
+                    />
+                  </label>
+                </div>
               </div>
-
-              <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg bg-neutral-50 p-3 text-sm text-neutral-600">
-                <span>Current active mix:</span>
-                <span className="font-medium text-neutral-900">BPM {activeWeights.bpm.toFixed(2)} • Key {activeWeights.key.toFixed(2)}</span>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleRecalculate}
-                className="mt-4 inline-flex items-center rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-700"
-              >
-                Recalculate ranking
-              </button>
             </div>
-          </div>
 
-          <div className="space-y-4">
-            <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
-              <h3 className="text-base font-semibold text-neutral-900">Selected track</h3>
+            <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800">
+              <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Selected track</h3>
               {selectedRow ? (
-                <div className="mt-3 rounded-lg border border-neutral-200 bg-white p-3">
-                  <p className="font-medium text-neutral-900">{selectedRow.song}</p>
-                  <p className="text-sm text-neutral-600">{selectedRow.artist || "Unknown artist"}</p>
-                  <div className="mt-2 flex flex-wrap gap-2 text-xs text-neutral-500">
-                    {selectedRow.bpm != null ? <span className="rounded-full bg-neutral-100 px-2 py-1">BPM: {selectedRow.bpm}</span> : null}
-                    {(selectedRow.key || selectedRow.mode) ? (
-                      <span className="rounded-full bg-neutral-100 px-2 py-1">
-                        Key: {selectedRow.key && selectedRow.mode ? `${selectedRow.key} ${selectedRow.mode}` : selectedRow.key || selectedRow.mode}
+                <div className="mt-3 overflow-hidden rounded-xl border border-neutral-200 bg-gradient-to-br from-white to-neutral-50 p-4 shadow-sm dark:border-neutral-600 dark:from-neutral-800 dark:to-neutral-900">
+                  <div className="flex items-start gap-3">
+                    {selectedRow.albumArt ? (
+                      <img
+                        src={selectedRow.albumArt}
+                        alt={selectedRow.song || "Album art"}
+                        className="h-48 w-48 flex-shrink-0 rounded-lg object-cover shadow-sm ring-1 ring-black/5 dark:ring-white/10"
+                      />
+                    ) : (
+                      <div className="flex h-48 w-48 flex-shrink-0 items-center justify-center rounded-lg bg-neutral-900 text-lg font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900">
+                        ★
+                      </div>
+                    )}
+                    <div className="min-w-0 pt-1">
+                      <p className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">{selectedRow.song}</p>
+                      <p className="text-sm text-neutral-600 dark:text-neutral-400">{selectedRow.artist || "Unknown artist"}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-neutral-600 dark:text-neutral-300">
+                    {selectedRow.bpm != null ? (
+                      <span className="rounded-full bg-neutral-900/5 px-2.5 py-1 font-medium dark:bg-white/10">BPM {selectedRow.bpm}</span>
+                    ) : null}
+                    {selectedRow.key || selectedRow.mode ? (
+                      <span className="rounded-full bg-neutral-900/5 px-2.5 py-1 font-medium dark:bg-white/10">
+                        {selectedRow.key && selectedRow.mode ? `${selectedRow.key} ${selectedRow.mode}` : selectedRow.key || selectedRow.mode}
                       </span>
                     ) : null}
-                    {selectedRow.album ? <span className="rounded-full bg-neutral-100 px-2 py-1">Album: {selectedRow.album}</span> : null}
                   </div>
                 </div>
               ) : (
-                <p className="mt-3 text-sm text-neutral-600">Choose a track from the autocomplete to start ranking similar songs.</p>
-              )}
-            </div>
-
-            <div className="rounded-lg border border-neutral-200 bg-white p-4">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-base font-semibold text-neutral-900">Similar tracks</h3>
-              </div>
-
-              {!hasCalculated ? (
-                <p className="text-sm text-neutral-600">Once you recalculate, the highest-scoring tracks will appear here.</p>
-              ) : ranking.length === 0 ? (
-                <p className="text-sm text-neutral-600">No similar tracks were found.</p>
-              ) : (
-                <ol className="space-y-3">
-                  {ranking.map((item, index) => (
-                    <li key={toRowKey(item.row)} className="rounded-lg border border-neutral-200 p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-medium text-neutral-900">{index + 1}. {item.row.song}</p>
-                          <p className="text-sm text-neutral-600">{item.row.artist || "Unknown artist"}</p>
-                        </div>
-                        <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-sm font-semibold text-neutral-700">
-                          {(item.score * 100).toFixed(0)}%
-                        </span>
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-2 text-xs text-neutral-500">
-                        <span className="rounded-full bg-neutral-50 px-2 py-1">BPM sim: {(item.bpmSimilarity * 100).toFixed(0)}%</span>
-                        <span className="rounded-full bg-neutral-50 px-2 py-1">Key sim: {(item.keySimilarity * 100).toFixed(0)}%</span>
-                        {item.row.bpm != null ? <span className="rounded-full bg-neutral-50 px-2 py-1">BPM: {item.row.bpm}</span> : null}
-                        {(item.row.key || item.row.mode) ? (
-                          <span className="rounded-full bg-neutral-50 px-2 py-1">
-                            Key: {item.row.key && item.row.mode ? `${item.row.key} ${item.row.mode}` : item.row.key || item.row.mode}
-                          </span>
-                        ) : null}
-                        {item.row.album ? <span className="rounded-full bg-neutral-50 px-2 py-1">Album: {item.row.album}</span> : null}
-                      </div>
-                    </li>
-                  ))}
-                </ol>
+                <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">Choose a track from the autocomplete to start ranking similar songs.</p>
               )}
             </div>
           </div>
-        </div>
+
+          {/* Results: full-width, 5x2 grid, paginated across all matches */}
+          <section className="mt-8">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Similar tracks</h2>
+              {hasCalculated && ranking.length > 0 ? (
+                <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                  Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, ranking.length)} of {ranking.length}
+                </span>
+              ) : null}
+            </div>
+
+            {!hasCalculated ? (
+              <div className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-8 text-center text-sm text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400">
+                Pick a track above to see its closest matches by BPM and key.
+              </div>
+            ) : ranking.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-8 text-center text-sm text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400">
+                No similar tracks were found.
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                  {paginatedRanking.map((item, index) => {
+                    const rank = (page - 1) * PAGE_SIZE + index + 1;
+                    return (
+                      <div
+                        key={toRowKey(item.row)}
+                        className={`group relative flex flex-col gap-3 rounded-xl border border-neutral-200 bg-white p-3 shadow-sm ring-1 ring-inset transition hover:-translate-y-0.5 hover:shadow-md dark:border-neutral-700 dark:bg-neutral-800 ${getScoreRingClass(
+                          item.score
+                        )}`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-semibold text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
+                            #{rank}
+                          </span>
+                          <span className={`text-lg font-bold leading-none ${getScoreTextClass(item.score)}`}>
+                            {(item.score * 100).toFixed(0)}
+                            <span className="text-xs font-medium">%</span>
+                          </span>
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{item.row.song || "Untitled track"}</p>
+                          <p className="truncate text-xs text-neutral-600 dark:text-neutral-400">{item.row.artist || "Unknown artist"}</p>
+                        </div>
+
+                        <div className="mt-auto flex flex-wrap gap-1.5 text-[11px] text-neutral-500 dark:text-neutral-300">
+                          {item.row.bpm != null ? (
+                            <span className="rounded-full bg-neutral-100 px-2 py-0.5 dark:bg-neutral-900">
+                              {item.row.bpm} BPM
+                            </span>
+                          ) : null}
+                          {item.row.key || item.row.mode ? (
+                            <span className="rounded-full bg-neutral-100 px-2 py-0.5 dark:bg-neutral-900">
+                              {item.row.key && item.row.mode ? `${item.row.key} ${item.row.mode}` : item.row.key || item.row.mode}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <div className="flex gap-1.5 text-[10px] text-neutral-400 dark:text-neutral-500">
+                          <span>BPM sim {Math.round(item.bpmSimilarity * 100)}%</span>
+                          <span>·</span>
+                          <span>Key sim {Math.round(item.keySimilarity * 100)}%</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {totalPages > 1 ? (
+                  <div className="mt-6 flex flex-col items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 sm:flex-row">
+                    <p>
+                      Page {page} of {totalPages}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => goToPage(page - 1)}
+                        disabled={page === 1}
+                        className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                      >
+                        Go Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => goToPage(page + 1)}
+                        disabled={page === totalPages}
+                        className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                      >
+                        Keep Going
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            )}
+          </section>
+        </>
       )}
     </div>
   );

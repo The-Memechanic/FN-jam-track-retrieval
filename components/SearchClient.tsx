@@ -1,9 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import Fuse from "fuse.js";
 import type { TrackRow } from "@/lib/fetchTracks";
-import { TRACK_COLUMNS } from "@/lib/fetchTracks";
 
 const SORT_OPTIONS = [
   { value: "relevancy", label: "Relevancy" },
@@ -55,22 +55,6 @@ const compareRows = (a: TrackRow, b: TrackRow, sortOption: SortOption) => {
   }
 };
 
-function getUniqueValues(rows: TrackRow[], key: keyof TrackRow) {
-  const map = new Map<string, string>();
-  rows.forEach((row) => {
-    const raw = Array.isArray(row[key])
-      ? (row[key] as string[]).join(", ")
-      : String(row[key] ?? "").trim();
-
-    if (!raw) return;
-    const normalized = raw.toLowerCase();
-    if (!map.has(normalized)) map.set(normalized, raw);
-  });
-  return Array.from(map.values()).sort((a, b) =>
-    a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
-  );
-}
-
 const equalsNormalized = (value: string, option: string) =>
   value.trim().toLowerCase() === option.trim().toLowerCase();
 
@@ -84,7 +68,7 @@ export default function SearchClient() {
   const [fetchedAt, setFetchedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const PAGE_SIZE = 10;
+  const PAGE_SIZE = 20;
 
   useEffect(() => {
     async function loadRows() {
@@ -107,9 +91,6 @@ export default function SearchClient() {
 
     loadRows();
   }, []);
-
-  const columns = useMemo(() => TRACK_COLUMNS, []);
-  const genreOptions = useMemo(() => getUniqueValues(rows, "genres"), [rows]);
 
   const filteredRows = useMemo(() => {
     return rows.filter((row) => {
@@ -154,7 +135,7 @@ export default function SearchClient() {
 
   if (loading) {
     return (
-      <div className="w-full max-w-4xl mx-auto rounded-lg border border-neutral-200 bg-white p-6 text-center text-neutral-600">
+      <div className="mx-auto w-full max-w-4xl rounded-lg border border-neutral-200 bg-white p-6 text-center text-neutral-600 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
         Loading Fortnite track data…
       </div>
     );
@@ -162,61 +143,46 @@ export default function SearchClient() {
 
   if (error) {
     return (
-      <div className="w-full max-w-4xl mx-auto rounded-lg border border-red-200 bg-red-50 text-red-700 p-6 text-sm">
+      <div className="mx-auto w-full max-w-4xl rounded-lg border border-red-200 bg-red-50 p-6 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
         Couldn&apos;t load the tracks: {error}
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto">
+    <div className="mx-auto w-full max-w-6xl">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Link
+          href="/similarity"
+          className="inline-flex items-center rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-neutral-200"
+        >
+          Try similarity-based matching
+        </Link>
+      </div>
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-        <aside className="rounded-lg border border-neutral-200 bg-white p-5 shadow-sm">
+        <aside className="rounded-lg border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
           <div className="flex flex-col gap-4">
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">Search</label>
+              <label className="mb-2 block text-sm font-medium text-neutral-700 dark:text-neutral-300">Search</label>
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search by song or artist…"
-                className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
               />
             </div>
-
-            <div>
-              <p className="mb-2 text-sm font-semibold text-neutral-700">Genres</p>
-              <div className="grid gap-2">
-                {genreOptions.map((option) => (
-                  <label key={option} className="inline-flex items-center gap-2 text-sm text-neutral-700">
-                    <input
-                      type="checkbox"
-                      checked={genreFilter.includes(option)}
-                      onChange={(e) => {
-                        const next = e.target.checked
-                          ? [...genreFilter, option]
-                          : genreFilter.filter((value) => value !== option);
-                        setGenreFilter(next);
-                      }}
-                      className="h-4 w-4 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
-                    />
-                    {option}
-                  </label>
-                ))}
-              </div>
-            </div>
-
           </div>
         </aside>
 
         <section className="space-y-6">
-          <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <span className="font-medium text-neutral-700">Sort:</span>
+              <span className="font-medium text-neutral-700 dark:text-neutral-300">Sort:</span>
               <select
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value as SortOption)}
-                className="rounded-lg border border-neutral-300 bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                className="rounded-lg border border-neutral-300 bg-white px-2 py-1 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
               >
                 {SORT_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -228,13 +194,13 @@ export default function SearchClient() {
                 <button
                   type="button"
                   onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
-                  className="inline-flex items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 py-1 text-sm text-neutral-700 hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                  className="inline-flex items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 py-1 text-sm text-neutral-700 hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
                 >
                   {sortDirection === "asc" ? "Ascending" : "Descending"}
                 </button>
               ) : null}
             </div>
-            <div className="flex flex-col gap-2 text-sm text-neutral-500 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-2 text-sm text-neutral-500 dark:text-neutral-400 sm:flex-row sm:items-center">
               <span>
                 {results.length} of {filteredRows.length} track{filteredRows.length === 1 ? "" : "s"}
               </span>
@@ -243,7 +209,7 @@ export default function SearchClient() {
           </div>
 
           {totalPages > 1 ? (
-            <div className="mt-4 flex flex-col items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-700 sm:flex-row">
+            <div className="mt-4 flex flex-col items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 sm:flex-row">
               <p>
                 Page {page} of {totalPages}
               </p>
@@ -254,7 +220,7 @@ export default function SearchClient() {
                   disabled={page === 1}
                   className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-900"
                 >
-                  Previous
+                  Go Back
                 </button>
                 <button
                   type="button"
@@ -262,99 +228,52 @@ export default function SearchClient() {
                   disabled={page === totalPages}
                   className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-900"
                 >
-                  Next
+                  Keep Going
                 </button>
               </div>
             </div>
           ) : null}
 
           {results.length === 0 ? (
-            <div className="rounded-lg border border-neutral-200 bg-white p-6 text-center text-neutral-500">
+            <div className="rounded-lg border border-neutral-200 bg-white p-6 text-center text-neutral-500 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400">
               No matches. Try a different search term.
             </div>
           ) : (
             <>
-              <div className="grid gap-3">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                 {paginatedResults.map((row, i) => (
                   <div
                     key={(page - 1) * PAGE_SIZE + i}
-                    className="rounded-lg border border-neutral-200 bg-white p-4 hover:border-neutral-400 transition-colors"
+                    className="group flex flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-3 transition-colors hover:border-neutral-400 dark:border-neutral-700 dark:bg-neutral-800 dark:hover:border-neutral-600"
                   >
-                    <div className="flex flex-col gap-2">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="text-lg font-semibold text-neutral-900">{row.song || "Untitled track"}</p>
-                          <p className="text-sm text-neutral-600">{row.artist || "Unknown artist"}</p>
+                    <div className="aspect-square w-full overflow-hidden rounded-md bg-neutral-100 dark:bg-neutral-800">
+                      {row.albumArt ? (
+                        <img
+                          src={row.albumArt}
+                          alt={row.song || "Album art"}
+                          loading="lazy"
+                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-xs text-neutral-400 dark:text-neutral-500">
+                          No image
                         </div>
-                        {row.album ? (
-                          <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium uppercase tracking-wide text-neutral-600">
-                            {row.album}
-                          </span>
-                        ) : null}
-                      </div>
-                      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                        {columns
-                          .filter((col) => {
-                            if (col.key === "song" || col.key === "artist") return false;
-
-                            switch (col.key) {
-                              case "releaseYear":
-                                return row.releaseYear != null;
-                              case "bpm":
-                                return row.bpm != null;
-                              case "key":
-                                return Boolean(row.key || row.mode);
-                              case "duration":
-                                return Boolean(row.duration);
-                              case "genres":
-                                return row.genres.length > 0;
-                              case "added":
-                                return Boolean(row.added);
-                              case "album":
-                                return Boolean(row.album);
-                              case "difficulty":
-                                return Boolean(row.difficulty);
-                              default:
-                                return false;
-                            }
-                          })
-                          .map((col) => {
-                            const value = row[col.key as keyof TrackRow];
-                            let displayValue: string | number | null = null;
-
-                            if (col.key === "releaseYear") {
-                              displayValue = row.releaseYear;
-                            } else if (col.key === "bpm") {
-                              displayValue = row.bpm;
-                            } else if (col.key === "key") {
-                              displayValue = row.key && row.mode ? `${row.key} ${row.mode}` : row.key || row.mode || null;
-                            } else if (col.key === "duration") {
-                              displayValue = row.duration ? `${row.duration}s` : null;
-                            } else if (col.key === "genres") {
-                              displayValue = row.genres.length ? row.genres.join(", ") : null;
-                            } else if (col.key === "added") {
-                              displayValue = row.added ? new Date(row.added).toLocaleDateString() : null;
-                            } else if (typeof value === "string") {
-                              displayValue = value || null;
-                            }
-
-                            if (displayValue === null || displayValue === "") return null;
-
-                            return (
-                              <div key={col.key} className="flex gap-2">
-                                <dt className="font-medium text-neutral-500 shrink-0">{col.label}:</dt>
-                                <dd className="text-neutral-900 break-words">{displayValue}</dd>
-                              </div>
-                            );
-                          })}
-                      </dl>
+                      )}
+                    </div>
+                    <div>
+                      <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                        {row.song || "Untitled track"}
+                      </p>
+                      <p className="truncate text-xs text-neutral-600 dark:text-neutral-400">
+                        {row.artist || "Unknown artist"}
+                      </p>
                     </div>
                   </div>
                 ))}
               </div>
 
               {totalPages > 1 ? (
-                <div className="mt-4 flex flex-col items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-700 sm:flex-row">
+                <div className="mt-4 flex flex-col items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 sm:flex-row">
                   <p>
                     Page {page} of {totalPages}
                   </p>
