@@ -2,51 +2,37 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Fuse from "fuse.js";
-import type { SheetRow } from "@/lib/fetchSheet";
-import { SHEET_COLUMNS } from "@/lib/fetchSheet";
+import type { TrackRow } from "@/lib/fetchTracks";
+import { TRACK_COLUMNS } from "@/lib/fetchTracks";
 
 const SORT_OPTIONS = [
   { value: "relevancy", label: "Relevancy" },
-  { value: "announce_date", label: "Announce Date" },
-  { value: "id", label: "ID" },
+  { value: "releaseYear", label: "Release year" },
   { value: "bpm", label: "BPM" },
-  { value: "earliest_development_time", label: "Earliest Development Time" },
+  { value: "added", label: "Added" },
 ] as const;
 
 type SortOption = (typeof SORT_OPTIONS)[number]["value"];
 
-const normalizeValue = (value?: string) => value?.trim().toLowerCase() ?? "";
-
-const parseNumber = (value?: string) => {
-  const numeric = Number((value ?? "").replace(/[^0-9.-]+/g, ""));
-  return Number.isFinite(numeric) ? numeric : NaN;
-};
-
-const parseDateValue = (value?: string): number | null => {
-  const date = new Date(value ?? "");
-  return isNaN(date.getTime()) ? null : date.getTime();
-};
-
 const compareString = (a: string, b: string) =>
   a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
 
-const compareRows = (a: SheetRow, b: SheetRow, sortOption: SortOption) => {
+const parseNumber = (value?: number | null) => (typeof value === "number" ? value : NaN);
+
+const parseDateValue = (value?: string): number | null => {
+  const date = new Date(value ?? "");
+  return Number.isNaN(date.getTime()) ? null : date.getTime();
+};
+
+const compareRows = (a: TrackRow, b: TrackRow, sortOption: SortOption) => {
   switch (sortOption) {
-    case "announce_date": {
-      const da = parseDateValue(a.announce_date);
-      const db = parseDateValue(b.announce_date);
-      if (da !== null && db !== null) return da - db;
-      if (da !== null) return -1;
-      if (db !== null) return 1;
-      return compareString(a.announce_date ?? "", b.announce_date ?? "");
-    }
-    case "id": {
-      const na = parseNumber(a.id);
-      const nb = parseNumber(b.id);
+    case "releaseYear": {
+      const na = parseNumber(a.releaseYear);
+      const nb = parseNumber(b.releaseYear);
       if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
       if (!Number.isNaN(na)) return -1;
       if (!Number.isNaN(nb)) return 1;
-      return compareString(a.id ?? "", b.id ?? "");
+      return compareString(a.song, b.song);
     }
     case "bpm": {
       const na = parseNumber(a.bpm);
@@ -54,31 +40,30 @@ const compareRows = (a: SheetRow, b: SheetRow, sortOption: SortOption) => {
       if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
       if (!Number.isNaN(na)) return -1;
       if (!Number.isNaN(nb)) return 1;
-      return compareString(a.bpm ?? "", b.bpm ?? "");
+      return compareString(a.song, b.song);
     }
-    case "earliest_development_time": {
-      const da = parseDateValue(a.earliest_development_time);
-      const db = parseDateValue(b.earliest_development_time);
+    case "added": {
+      const da = parseDateValue(a.added);
+      const db = parseDateValue(b.added);
       if (da !== null && db !== null) return da - db;
       if (da !== null) return -1;
       if (db !== null) return 1;
-      return compareString(
-        a.earliest_development_time ?? "",
-        b.earliest_development_time ?? ""
-      );
+      return compareString(a.added ?? "", b.added ?? "");
     }
     default:
       return 0;
   }
 };
 
-function getUniqueValues(rows: SheetRow[], key: keyof SheetRow) {
+function getUniqueValues(rows: TrackRow[], key: keyof TrackRow) {
   const map = new Map<string, string>();
   rows.forEach((row) => {
-    const raw = (row[key] ?? "").trim();
+    const raw = Array.isArray(row[key])
+      ? (row[key] as string[]).join(", ")
+      : String(row[key] ?? "").trim();
+
     if (!raw) return;
     const normalized = raw.toLowerCase();
-    if (normalized === "num") return;
     if (!map.has(normalized)) map.set(normalized, raw);
   });
   return Array.from(map.values()).sort((a, b) =>
@@ -91,14 +76,11 @@ const equalsNormalized = (value: string, option: string) =>
 
 export default function SearchClient() {
   const [query, setQuery] = useState("");
-  const [modeFilter, setModeFilter] = useState<string[]>([]);
-  const [keyFilter, setKeyFilter] = useState<string[]>([]);
-  const [stateFilter, setStateFilter] = useState<string[]>(["Released"]);
-  const [sourceFilter, setSourceFilter] = useState<string[]>([]);
+  const [genreFilter, setGenreFilter] = useState<string[]>([]);
   const [sortOption, setSortOption] = useState<SortOption>("relevancy");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
-  const [rows, setRows] = useState<SheetRow[]>([]);
+  const [rows, setRows] = useState<TrackRow[]>([]);
   const [fetchedAt, setFetchedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -110,7 +92,7 @@ export default function SearchClient() {
       try {
         const res = await fetch("/api/data");
         if (!res.ok) {
-          throw new Error(`Failed to load sheet data: ${res.status}`);
+          throw new Error(`Failed to load track data: ${res.status}`);
         }
 
         const data = await res.json();
@@ -126,48 +108,23 @@ export default function SearchClient() {
     loadRows();
   }, []);
 
-  const columns = useMemo(() => SHEET_COLUMNS, []);
-  const modeOptions = useMemo(() => getUniqueValues(rows, "mode"), [rows]);
-  const keyOptions = useMemo(() => getUniqueValues(rows, "key"), [rows]);
-  const stateOptions = useMemo(() => getUniqueValues(rows, "state"), [rows]);
-  const sourceOptions = useMemo(() => {
-    const uniqueSources = getUniqueValues(rows, "source");
-    return ["Battle Pass (Any)", "Music Pass (Any)", ...uniqueSources];
-  }, [rows]);
-
-  const isSourceMatch = (sourceValue: string, filterValue: string) => {
-    const normalizedSource = sourceValue.trim().toLowerCase();
-    const normalizedFilter = filterValue.trim().toLowerCase();
-    if (normalizedFilter === "battle pass (any)") {
-      return normalizedSource.includes("battle pass");
-    }
-    if (normalizedFilter === "music pass (any)") {
-      return normalizedSource.includes("music pass");
-    }
-    return normalizedSource === normalizedFilter;
-  };
+  const columns = useMemo(() => TRACK_COLUMNS, []);
+  const genreOptions = useMemo(() => getUniqueValues(rows, "genres"), [rows]);
 
   const filteredRows = useMemo(() => {
     return rows.filter((row) => {
-      const modeMatch =
-        modeFilter.length === 0 ||
-        modeFilter.some((filterValue) => equalsNormalized(row.mode, filterValue));
-      const keyMatch =
-        keyFilter.length === 0 ||
-        keyFilter.some((filterValue) => equalsNormalized(row.key, filterValue));
-      const stateMatch =
-        stateFilter.length === 0 ||
-        stateFilter.some((filterValue) => equalsNormalized(row.state, filterValue));
-      const sourceMatch =
-        sourceFilter.length === 0 ||
-        sourceFilter.some((filterValue) => isSourceMatch(row.source, filterValue));
-      return modeMatch && keyMatch && stateMatch && sourceMatch;
+      return (
+        genreFilter.length === 0 ||
+        genreFilter.some((filterValue) =>
+          row.genres.some((genre) => equalsNormalized(genre, filterValue))
+        )
+      );
     });
-  }, [modeFilter, keyFilter, stateFilter, sourceFilter, rows]);
+  }, [genreFilter, rows]);
 
   const fuse = useMemo(() => {
     return new Fuse(filteredRows, {
-      keys: ["song", "artist"],
+      keys: ["song", "artist", "album", "devName"],
       threshold: 0.35,
       ignoreLocation: true,
     });
@@ -193,12 +150,12 @@ export default function SearchClient() {
 
   useEffect(() => {
     setPage(1);
-  }, [query, modeFilter, keyFilter, stateFilter, sourceFilter, sortOption, sortDirection]);
+  }, [query, genreFilter, sortOption, sortDirection]);
 
   if (loading) {
     return (
       <div className="w-full max-w-4xl mx-auto rounded-lg border border-neutral-200 bg-white p-6 text-center text-neutral-600">
-        Loading sheet data…
+        Loading Fortnite track data…
       </div>
     );
   }
@@ -206,7 +163,7 @@ export default function SearchClient() {
   if (error) {
     return (
       <div className="w-full max-w-4xl mx-auto rounded-lg border border-red-200 bg-red-50 text-red-700 p-6 text-sm">
-        Couldn&apos;t load the sheet: {error}
+        Couldn&apos;t load the tracks: {error}
       </div>
     );
   }
@@ -228,88 +185,22 @@ export default function SearchClient() {
             </div>
 
             <div>
-              <p className="mb-2 text-sm font-semibold text-neutral-700">Mode</p>
+              <p className="mb-2 text-sm font-semibold text-neutral-700">Genres</p>
               <div className="grid gap-2">
-                {modeOptions.map((option) => (
+                {genreOptions.map((option) => (
                   <label key={option} className="inline-flex items-center gap-2 text-sm text-neutral-700">
                     <input
                       type="checkbox"
-                      checked={modeFilter.includes(option)}
+                      checked={genreFilter.includes(option)}
                       onChange={(e) => {
                         const next = e.target.checked
-                          ? [...modeFilter, option]
-                          : modeFilter.filter((value) => value !== option);
-                        setModeFilter(next);
+                          ? [...genreFilter, option]
+                          : genreFilter.filter((value) => value !== option);
+                        setGenreFilter(next);
                       }}
                       className="h-4 w-4 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
                     />
                     {option}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="mb-2 text-sm font-semibold text-neutral-700">Key</p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {keyOptions.map((keyOption) => (
-                  <label key={keyOption} className="inline-flex items-center gap-2 text-sm text-neutral-700">
-                    <input
-                      type="checkbox"
-                      checked={keyFilter.includes(keyOption)}
-                      onChange={(e) => {
-                        const next = e.target.checked
-                          ? [...keyFilter, keyOption]
-                          : keyFilter.filter((value) => value !== keyOption);
-                        setKeyFilter(next);
-                      }}
-                      className="h-4 w-4 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
-                    />
-                    {keyOption}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="mb-2 text-sm font-semibold text-neutral-700">State</p>
-              <div className="grid gap-2">
-                {stateOptions.map((option) => (
-                  <label key={option} className="inline-flex items-center gap-2 text-sm text-neutral-700">
-                    <input
-                      type="checkbox"
-                      checked={stateFilter.includes(option)}
-                      onChange={(e) => {
-                        const next = e.target.checked
-                          ? [...stateFilter, option]
-                          : stateFilter.filter((value) => value !== option);
-                        setStateFilter(next);
-                      }}
-                      className="h-4 w-4 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
-                    />
-                    {option}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="mb-2 text-sm font-semibold text-neutral-700">Source</p>
-              <div className="grid gap-2">
-                {sourceOptions.map((source) => (
-                  <label key={source} className="inline-flex items-center gap-2 text-sm text-neutral-700">
-                    <input
-                      type="checkbox"
-                      checked={sourceFilter.includes(source)}
-                      onChange={(e) => {
-                        const next = e.target.checked
-                          ? [...sourceFilter, source]
-                          : sourceFilter.filter((value) => value !== source);
-                        setSourceFilter(next);
-                      }}
-                      className="h-4 w-4 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
-                    />
-                    {source}
                   </label>
                 ))}
               </div>
@@ -345,7 +236,7 @@ export default function SearchClient() {
             </div>
             <div className="flex flex-col gap-2 text-sm text-neutral-500 sm:flex-row sm:items-center">
               <span>
-                {results.length} of {filteredRows.length} row{filteredRows.length === 1 ? "" : "s"}
+                {results.length} of {filteredRows.length} track{filteredRows.length === 1 ? "" : "s"}
               </span>
               <span>Data last fetched {fetchedAt ? new Date(fetchedAt).toLocaleString() : "unknown"}</span>
             </div>
@@ -389,22 +280,75 @@ export default function SearchClient() {
                     key={(page - 1) * PAGE_SIZE + i}
                     className="rounded-lg border border-neutral-200 bg-white p-4 hover:border-neutral-400 transition-colors"
                   >
-                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
-                      {columns.map((col) => {
-                        const value = row[col.key];
-                        if (col.key === "extra_info" && !value) return null;
-                        return (
-                          <div key={col.key} className="flex gap-2 text-sm">
-                            <dt className="font-medium text-neutral-500 shrink-0">
-                              {col.label}:
-                            </dt>
-                            <dd className="text-neutral-900 break-words">
-                              {value || "—"}
-                            </dd>
-                          </div>
-                        );
-                      })}
-                    </dl>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-lg font-semibold text-neutral-900">{row.song || "Untitled track"}</p>
+                          <p className="text-sm text-neutral-600">{row.artist || "Unknown artist"}</p>
+                        </div>
+                        {row.album ? (
+                          <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium uppercase tracking-wide text-neutral-600">
+                            {row.album}
+                          </span>
+                        ) : null}
+                      </div>
+                      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                        {columns
+                          .filter((col) => {
+                            if (col.key === "song" || col.key === "artist") return false;
+
+                            switch (col.key) {
+                              case "releaseYear":
+                                return row.releaseYear != null;
+                              case "bpm":
+                                return row.bpm != null;
+                              case "key":
+                                return Boolean(row.key || row.mode);
+                              case "duration":
+                                return Boolean(row.duration);
+                              case "genres":
+                                return row.genres.length > 0;
+                              case "added":
+                                return Boolean(row.added);
+                              case "album":
+                                return Boolean(row.album);
+                              case "difficulty":
+                                return Boolean(row.difficulty);
+                              default:
+                                return false;
+                            }
+                          })
+                          .map((col) => {
+                            const value = row[col.key as keyof TrackRow];
+                            let displayValue: string | number | null = null;
+
+                            if (col.key === "releaseYear") {
+                              displayValue = row.releaseYear;
+                            } else if (col.key === "bpm") {
+                              displayValue = row.bpm;
+                            } else if (col.key === "key") {
+                              displayValue = row.key && row.mode ? `${row.key} ${row.mode}` : row.key || row.mode || null;
+                            } else if (col.key === "duration") {
+                              displayValue = row.duration ? `${row.duration}s` : null;
+                            } else if (col.key === "genres") {
+                              displayValue = row.genres.length ? row.genres.join(", ") : null;
+                            } else if (col.key === "added") {
+                              displayValue = row.added ? new Date(row.added).toLocaleDateString() : null;
+                            } else if (typeof value === "string") {
+                              displayValue = value || null;
+                            }
+
+                            if (displayValue === null || displayValue === "") return null;
+
+                            return (
+                              <div key={col.key} className="flex gap-2">
+                                <dt className="font-medium text-neutral-500 shrink-0">{col.label}:</dt>
+                                <dd className="text-neutral-900 break-words">{displayValue}</dd>
+                              </div>
+                            );
+                          })}
+                      </dl>
+                    </div>
                   </div>
                 ))}
               </div>

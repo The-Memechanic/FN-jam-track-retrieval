@@ -3,123 +3,79 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import Fuse from "fuse.js";
-import type { SheetRow } from "@/lib/fetchSheet";
+import type { TrackRow } from "@/lib/fetchTracks";
 
 type WeightState = {
-  key: number;
   bpm: number;
+  key: number;
 };
 
 type RankedSong = {
-  row: SheetRow;
+  row: TrackRow;
   score: number;
-  keySimilarity: number;
   bpmSimilarity: number;
+  keySimilarity: number;
 };
 
-const normalizeText = (value?: string) => value?.trim().toLowerCase() ?? "";
-
-const toDisplayLabel = (row: SheetRow) => {
+const toDisplayLabel = (row: TrackRow) => {
   if (row.artist && row.song) {
     return `${row.song} — ${row.artist}`;
   }
   return row.song || row.artist || "Untitled track";
 };
 
-const toRowKey = (row: SheetRow) => {
-  return `${row.song || ""}::${row.artist || ""}::${row.id || ""}::${row.source || ""}`;
+const toRowKey = (row: TrackRow) => {
+  return `${row.song || ""}::${row.artist || ""}::${row.id || ""}::${row.album || ""}`;
 };
 
-const parseBpm = (value?: string) => {
-  const numeric = Number((value ?? "").replace(/[^0-9.-]+/g, ""));
-  return Number.isFinite(numeric) ? numeric : null;
-};
+const parseBpm = (value?: number | null) => (typeof value === "number" ? value : null);
 
-// Parses just the root note(s), e.g. "C", "F#", "Bb", "Db/C#"
-const parseKeyRoots = (value?: string) => {
-  const normalized = normalizeText(value)
-    .replace(/\s+/g, "")
-    .replace(/[♯#]/g, "#")
-    .replace(/[♭b]/g, "b");
-
-  if (!normalized || normalized === "num") {
+const getPitchClass = (value?: string | null) => {
+  const raw = value?.trim() ?? "";
+  if (!raw) {
     return null;
   }
 
-  const rootMap: Record<string, number> = {
-    c: 0,
-    "c#": 1,
-    db: 1,
-    d: 2,
-    "d#": 3,
-    eb: 3,
-    e: 4,
-    f: 5,
-    "f#": 6,
-    gb: 6,
-    g: 7,
-    "g#": 8,
-    ab: 8,
-    a: 9,
-    "a#": 10,
-    bb: 10,
-    b: 11,
+  const normalized = raw
+    .replace(/[♯#]/g, "#")
+    .replace(/[♭b]/g, "b")
+    .replace(/\s+/g, "")
+    .toUpperCase();
+
+  const tokens = normalized.split("/").filter(Boolean);
+
+  const pitchMap: Record<string, number> = {
+    C: 0,
+    "C#": 1,
+    CB: 11,
+    D: 2,
+    "D#": 3,
+    DB: 1,
+    E: 4,
+    EB: 3,
+    F: 5,
+    "F#": 6,
+    GB: 6,
+    G: 7,
+    "G#": 8,
+    AB: 8,
+    A: 9,
+    "A#": 10,
+    BB: 10,
+    B: 11,
   };
 
-  const roots = normalized
-    .split("/")
-    .map((entry) => rootMap[entry])
-    .filter((root): root is number => root !== undefined);
+  for (const token of tokens) {
+    const pitch = pitchMap[token];
+    if (pitch !== undefined) {
+      return pitch;
+    }
+  }
 
-  return roots.length > 0 ? roots : null;
-};
-
-// Parses the separate "mode" column, e.g. "Major" / "Minor"
-const parseMode = (value?: string): "major" | "minor" | null => {
-  const normalized = normalizeText(value);
-  if (!normalized) return null;
-  if (/^(min|minor|m|mi)$/.test(normalized)) return "minor";
-  if (/^(maj|major)$/.test(normalized)) return "major";
   return null;
 };
 
-const getKeySimilarity = (
-  leftKey?: string,
-  leftMode?: string,
-  rightKey?: string,
-  rightMode?: string
-) => {
-  const leftRoots = parseKeyRoots(leftKey);
-  const rightRoots = parseKeyRoots(rightKey);
-
-  if (!leftRoots || !rightRoots) {
-    return 0;
-  }
-
-  const leftM = parseMode(leftMode);
-  const rightM = parseMode(rightMode);
-
-  let bestScore = 0;
-
-  leftRoots.forEach((leftRoot) => {
-    rightRoots.forEach((rightRoot) => {
-      const distance = Math.abs(leftRoot - rightRoot);
-      const wrappedDistance = Math.min(distance, 12 - distance);
-      const rootScore = Math.max(0, 1 - wrappedDistance / 6);
-
-      let score = rootScore;
-      if (leftM && rightM && leftM !== rightM) {
-        score = Math.max(0, rootScore - 0.5); // opposite-mode penalty
-      }
-
-      bestScore = Math.max(bestScore, score);
-    });
-  });
-
-  return bestScore;
-};
-
-const getBpmSimilarity = (left?: string, right?: string) => {
+const getBpmSimilarity = (left?: number | null, right?: number | null) => {
   const leftBpm = parseBpm(left);
   const rightBpm = parseBpm(right);
 
@@ -132,11 +88,38 @@ const getBpmSimilarity = (left?: string, right?: string) => {
   return Math.min(1, normalized);
 };
 
+const getKeySimilarity = (
+  leftKey?: string | null,
+  rightKey?: string | null,
+  leftMode?: string | null,
+  rightMode?: string | null
+) => {
+  const leftPitch = getPitchClass(leftKey);
+  const rightPitch = getPitchClass(rightKey);
+
+  if (leftPitch === null || rightPitch === null) {
+    return 0;
+  }
+
+  const difference = Math.abs(leftPitch - rightPitch);
+  const shortestDistance = Math.min(difference, 12 - difference);
+  const baseSimilarity = Math.max(0, 1 - shortestDistance / 6);
+
+  const leftModeNormalized = (leftMode ?? "").trim().toLowerCase();
+  const rightModeNormalized = (rightMode ?? "").trim().toLowerCase();
+
+  if (leftModeNormalized && rightModeNormalized && leftModeNormalized !== rightModeNormalized) {
+    return baseSimilarity * 0.5;
+  }
+
+  return baseSimilarity;
+};
+
 const clampWeight = (value: number) => Math.max(0, Math.min(1, Number(value.toFixed(2))));
 
 const computeRanking = (
-  targetRow: SheetRow,
-  allRows: SheetRow[],
+  targetRow: TrackRow,
+  allRows: TrackRow[],
   weights: WeightState
 ): RankedSong[] => {
   const targetKey = toRowKey(targetRow);
@@ -144,15 +127,15 @@ const computeRanking = (
   return allRows
     .filter((row) => toRowKey(row) !== targetKey)
     .map((row) => {
-      const keySimilarity = getKeySimilarity(targetRow.key, targetRow.mode, row.key, row.mode);
       const bpmSimilarity = getBpmSimilarity(targetRow.bpm, row.bpm);
-      const score = keySimilarity * weights.key + bpmSimilarity * weights.bpm;
+      const keySimilarity = getKeySimilarity(targetRow.key, row.key, targetRow.mode, row.mode);
+      const score = bpmSimilarity * weights.bpm + keySimilarity * weights.key;
 
       return {
         row,
         score,
-        keySimilarity,
         bpmSimilarity,
+        keySimilarity,
       };
     })
     .sort((a, b) => b.score - a.score)
@@ -160,14 +143,14 @@ const computeRanking = (
 };
 
 export default function SimilaritySearchClient() {
-  const [rows, setRows] = useState<SheetRow[]>([]);
+  const [rows, setRows] = useState<TrackRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [selectedSongKey, setSelectedSongKey] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [draftWeights, setDraftWeights] = useState<WeightState>({ key: 0.5, bpm: 0.5 });
-  const [activeWeights, setActiveWeights] = useState<WeightState>({ key: 0.5, bpm: 0.5 });
+  const [draftWeights, setDraftWeights] = useState<WeightState>({ bpm: 0.5, key: 0.5 });
+  const [activeWeights, setActiveWeights] = useState<WeightState>({ bpm: 0.5, key: 0.5 });
   const [ranking, setRanking] = useState<RankedSong[]>([]);
   const [hasCalculated, setHasCalculated] = useState(false);
 
@@ -177,7 +160,7 @@ export default function SimilaritySearchClient() {
       try {
         const response = await fetch("/api/data");
         if (!response.ok) {
-          throw new Error(`Failed to load sheet data: ${response.status}`);
+          throw new Error(`Failed to load track data: ${response.status}`);
         }
         const data = await response.json();
         setRows(data.rows ?? []);
@@ -197,7 +180,7 @@ export default function SimilaritySearchClient() {
     }
 
     const fuse = new Fuse(rows, {
-      keys: ["song", "artist"],
+      keys: ["song", "artist", "album"],
       threshold: 0.35,
       ignoreLocation: true,
       distance: 100,
@@ -214,6 +197,19 @@ export default function SimilaritySearchClient() {
     return rows.find((row) => toRowKey(row) === selectedSongKey) ?? null;
   }, [rows, selectedSongKey]);
 
+  useEffect(() => {
+    if (!selectedRow) {
+      setRanking([]);
+      setHasCalculated(false);
+      return;
+    }
+
+    const nextRanking = computeRanking(selectedRow, rows, draftWeights);
+    setRanking(nextRanking);
+    setActiveWeights(draftWeights);
+    setHasCalculated(true);
+  }, [draftWeights, rows, selectedRow]);
+
   const handleRecalculate = () => {
     if (!selectedRow) {
       setRanking([]);
@@ -221,19 +217,20 @@ export default function SimilaritySearchClient() {
       return;
     }
 
-    setRanking(computeRanking(selectedRow, rows, draftWeights));
+    const nextRanking = computeRanking(selectedRow, rows, draftWeights);
+    setRanking(nextRanking);
     setActiveWeights(draftWeights);
     setHasCalculated(true);
   };
 
-  const handleWeightChange = (type: "key" | "bpm", value: number) => {
-    const nextValue = clampWeight(value);
-    if (type === "key") {
-      setDraftWeights({ key: nextValue, bpm: clampWeight(1 - nextValue) });
-      return;
-    }
+  const handleBpmWeightChange = (value: number) => {
+    const clampedValue = clampWeight(value);
+    setDraftWeights({ bpm: clampedValue, key: clampWeight(1 - clampedValue) });
+  };
 
-    setDraftWeights({ key: clampWeight(1 - nextValue), bpm: nextValue });
+  const handleKeyWeightChange = (value: number) => {
+    const clampedValue = clampWeight(value);
+    setDraftWeights({ bpm: clampWeight(1 - clampedValue), key: clampedValue });
   };
 
   return (
@@ -241,9 +238,7 @@ export default function SimilaritySearchClient() {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-semibold text-neutral-900">Similarity search</h2>
-          <p className="text-sm text-neutral-600">
-            Pick a song, then rank others by key and BPM similarity.
-          </p>
+          <p className="text-sm text-neutral-600">Pick a song, then rank others by BPM and key similarity.</p>
         </div>
         <Link
           href="/"
@@ -296,9 +291,6 @@ export default function SimilaritySearchClient() {
                               setSelectedSongKey(toRowKey(song));
                               setQuery(label);
                               setShowSuggestions(false);
-                              setActiveWeights(draftWeights);
-                              setHasCalculated(true);
-                              setRanking(computeRanking(song, rows, draftWeights));
                             }}
                             className="flex w-full flex-col items-start px-3 py-2 text-left text-sm text-neutral-700 transition hover:bg-neutral-50"
                           >
@@ -320,29 +312,11 @@ export default function SimilaritySearchClient() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-base font-semibold text-neutral-900">Similarity weights</h3>
-                  <p className="text-sm text-neutral-600">
-                    Adjust the sliders, then press the button below to recalculate the ranking.
-                  </p>
+                  <p className="text-sm text-neutral-600">Adjust the slider, then press the button below to recalculate the ranking.</p>
                 </div>
               </div>
 
               <div className="mt-4 space-y-4">
-                <label className="block text-sm font-medium text-neutral-700">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span>Key weight</span>
-                    <span className="text-neutral-500">{draftWeights.key.toFixed(2)}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={draftWeights.key}
-                    onChange={(event) => handleWeightChange("key", Number(event.target.value))}
-                    className="w-full accent-neutral-900"
-                  />
-                </label>
-
                 <label className="block text-sm font-medium text-neutral-700">
                   <div className="mb-2 flex items-center justify-between">
                     <span>BPM weight</span>
@@ -354,7 +328,23 @@ export default function SimilaritySearchClient() {
                     max="1"
                     step="0.01"
                     value={draftWeights.bpm}
-                    onChange={(event) => handleWeightChange("bpm", Number(event.target.value))}
+                    onChange={(event) => handleBpmWeightChange(Number(event.target.value))}
+                    className="w-full accent-neutral-900"
+                  />
+                </label>
+
+                <label className="block text-sm font-medium text-neutral-700">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span>Key weight</span>
+                    <span className="text-neutral-500">{draftWeights.key.toFixed(2)}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={draftWeights.key}
+                    onChange={(event) => handleKeyWeightChange(Number(event.target.value))}
                     className="w-full accent-neutral-900"
                   />
                 </label>
@@ -362,8 +352,7 @@ export default function SimilaritySearchClient() {
 
               <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg bg-neutral-50 p-3 text-sm text-neutral-600">
                 <span>Current active mix:</span>
-                <span className="font-medium text-neutral-900">Key {activeWeights.key.toFixed(2)}</span>
-                <span className="font-medium text-neutral-900">BPM {activeWeights.bpm.toFixed(2)}</span>
+                <span className="font-medium text-neutral-900">BPM {activeWeights.bpm.toFixed(2)} • Key {activeWeights.key.toFixed(2)}</span>
               </div>
 
               <button
@@ -384,16 +373,17 @@ export default function SimilaritySearchClient() {
                   <p className="font-medium text-neutral-900">{selectedRow.song}</p>
                   <p className="text-sm text-neutral-600">{selectedRow.artist || "Unknown artist"}</p>
                   <div className="mt-2 flex flex-wrap gap-2 text-xs text-neutral-500">
-                    <span className="rounded-full bg-neutral-100 px-2 py-1">
-                      Key: {selectedRow.key || "—"} {selectedRow.mode || ""}
-                    </span>
-                    <span className="rounded-full bg-neutral-100 px-2 py-1">BPM: {selectedRow.bpm || "—"}</span>
+                    {selectedRow.bpm != null ? <span className="rounded-full bg-neutral-100 px-2 py-1">BPM: {selectedRow.bpm}</span> : null}
+                    {(selectedRow.key || selectedRow.mode) ? (
+                      <span className="rounded-full bg-neutral-100 px-2 py-1">
+                        Key: {selectedRow.key && selectedRow.mode ? `${selectedRow.key} ${selectedRow.mode}` : selectedRow.key || selectedRow.mode}
+                      </span>
+                    ) : null}
+                    {selectedRow.album ? <span className="rounded-full bg-neutral-100 px-2 py-1">Album: {selectedRow.album}</span> : null}
                   </div>
                 </div>
               ) : (
-                <p className="mt-3 text-sm text-neutral-600">
-                  Choose a track from the autocomplete to start ranking similar songs.
-                </p>
+                <p className="mt-3 text-sm text-neutral-600">Choose a track from the autocomplete to start ranking similar songs.</p>
               )}
             </div>
 
@@ -403,9 +393,7 @@ export default function SimilaritySearchClient() {
               </div>
 
               {!hasCalculated ? (
-                <p className="text-sm text-neutral-600">
-                  Once you recalculate, the highest-scoring tracks will appear here.
-                </p>
+                <p className="text-sm text-neutral-600">Once you recalculate, the highest-scoring tracks will appear here.</p>
               ) : ranking.length === 0 ? (
                 <p className="text-sm text-neutral-600">No similar tracks were found.</p>
               ) : (
@@ -422,12 +410,15 @@ export default function SimilaritySearchClient() {
                         </span>
                       </div>
                       <div className="mt-2 flex flex-wrap gap-2 text-xs text-neutral-500">
-                        <span className="rounded-full bg-neutral-50 px-2 py-1">Key sim: {(item.keySimilarity * 100).toFixed(0)}%</span>
                         <span className="rounded-full bg-neutral-50 px-2 py-1">BPM sim: {(item.bpmSimilarity * 100).toFixed(0)}%</span>
-                        <span className="rounded-full bg-neutral-50 px-2 py-1">
-                          Key: {item.row.key || "—"} {item.row.mode || ""}
-                        </span>
-                        <span className="rounded-full bg-neutral-50 px-2 py-1">BPM: {item.row.bpm || "—"}</span>
+                        <span className="rounded-full bg-neutral-50 px-2 py-1">Key sim: {(item.keySimilarity * 100).toFixed(0)}%</span>
+                        {item.row.bpm != null ? <span className="rounded-full bg-neutral-50 px-2 py-1">BPM: {item.row.bpm}</span> : null}
+                        {(item.row.key || item.row.mode) ? (
+                          <span className="rounded-full bg-neutral-50 px-2 py-1">
+                            Key: {item.row.key && item.row.mode ? `${item.row.key} ${item.row.mode}` : item.row.key || item.row.mode}
+                          </span>
+                        ) : null}
+                        {item.row.album ? <span className="rounded-full bg-neutral-50 px-2 py-1">Album: {item.row.album}</span> : null}
                       </div>
                     </li>
                   ))}

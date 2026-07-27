@@ -6,7 +6,7 @@ export default function SimilarityPage() {
       <div className="mx-auto mb-8 max-w-4xl text-center">
         <h1 className="text-3xl font-semibold text-neutral-900">Similarity-based track matching</h1>
         <p className="mt-2 text-neutral-600">
-          Search for a song, pick a result, and compare it against similar tracks using key and BPM.
+          Search for a song, pick a result, and compare it against similar tracks using the sheet-backed key and mode data plus BPM.
         </p>
       </div>
       <SimilaritySearchClient />

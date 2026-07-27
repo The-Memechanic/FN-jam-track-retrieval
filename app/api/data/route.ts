@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { fetchSheetData } from "@/lib/fetchSheet";
+import { fetchTrackData } from "@/lib/fetchTracks";
 
 export async function GET() {
   try {
-    const rows = await fetchSheetData();
+    const rows = await fetchTrackData();
     return NextResponse.json({ rows, fetchedAt: new Date().toISOString() });
   } catch (err) {
     console.error(err);

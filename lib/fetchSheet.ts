@@ -1,98 +1,100 @@
-import Papa from "papaparse";
-
-// Google Sheet ID
 const SHEET_ID = "1gHg1F9GkUsjN3xe7WFnW5r4-28fIOgzMXTQwSGlkD0Y";
-
 const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
 
-const RAW_SHEET_KEYS = [
-  "song_with_artist",
-  "source",
-  "state",
-  "id",
-  "mode",
-  "bpm",
-  "key",
-  "earliest_development_time",
-  "announce_date",
-  "extra_info",
-] as const;
+export type SheetTrackMetadata = {
+  key: string;
+  mode: string;
+};
 
-export const SHEET_COLUMNS = [
-  { key: "song", label: "Song" },
-  { key: "artist", label: "Artist" },
-  { key: "source", label: "Source" },
-  { key: "state", label: "State" },
-  { key: "id", label: "ID" },
-  { key: "mode", label: "Mode" },
-  { key: "bpm", label: "BPM" },
-  { key: "key", label: "Key" },
-  { key: "earliest_development_time", label: "Earliest Development Date" },
-  { key: "announce_date", label: "Announcement Date" },
-  { key: "extra_info", label: "Extra Info" },
-] as const;
+const normalizeCell = (value?: string | null) => value?.trim() ?? "";
+const normalizeId = (value?: string | null) => normalizeCell(value).toLowerCase();
 
-export type RawSheetColumnKey = (typeof RAW_SHEET_KEYS)[number];
-export type SheetColumnKey = (typeof SHEET_COLUMNS)[number]["key"];
-export type SheetRow = Record<SheetColumnKey, string> & { song_with_artist: string };
+const parseCsv = (value: string) => {
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentValue = "";
+  let inQuotes = false;
 
-function splitSongWithArtist(value: string) {
-  const trimmed = value.trim();
-  const normalized = trimmed.replace(/[–—−]/g, "-");
-  const match = normalized.match(/^\s*(.*?)\s*-\s*(.*)$/);
-  if (match) {
-    return {
-      artist: match[1].trim(),
-      song: match[2].trim(),
-    };
+  const pushValue = () => {
+    currentRow.push(currentValue);
+    currentValue = "";
+  };
+
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index];
+
+    if (char === '"') {
+      if (inQuotes && value[index + 1] === '"') {
+        currentValue += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      pushValue();
+      continue;
+    }
+
+    if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (char === "\r" && value[index + 1] === "\n") {
+        index += 1;
+      }
+      pushValue();
+      rows.push(currentRow);
+      currentRow = [];
+      continue;
+    }
+
+    currentValue += char;
   }
 
-  return {
-    artist: "",
-    song: normalized,
-  };
-}
+  if (currentValue.length > 0 || currentRow.length > 0) {
+    pushValue();
+    rows.push(currentRow);
+  }
 
-/**
- * Fetches the sheet as CSV and returns an array of row objects keyed by
- * normalized column names.
- */
-export async function fetchSheetData(): Promise<SheetRow[]> {
-  const res = await fetch(SHEET_CSV_URL, {
-    // re-fetch at most once every 15 minutes.
+  return rows;
+};
+
+export async function fetchSheetTrackMetadata(): Promise<Map<string, SheetTrackMetadata>> {
+  const response = await fetch(SHEET_CSV_URL, {
     next: { revalidate: 900 },
   });
 
-  if (!res.ok) {
-    throw new Error(
-      `Failed to fetch sheet (status ${res.status}). Check its permissions.`
-    );
+  if (!response.ok) {
+    throw new Error(`Failed to fetch sheet metadata (status ${response.status}).`);
   }
 
-  const csvText = await res.text();
+  const csvText = await response.text();
+  const rows = parseCsv(csvText);
+  const [headerRow, ...dataRows] = rows;
 
-  const parsed = Papa.parse<string[]>(csvText, {
-    skipEmptyLines: true,
-  });
-
-  const [headerRow, ...dataRows] = parsed.data;
-  if (!headerRow) {
-    throw new Error("Sheet header row is missing or malformed.");
+  if (!headerRow || headerRow.length === 0) {
+    return new Map();
   }
 
-  const headers = RAW_SHEET_KEYS;
-  const rows: SheetRow[] = dataRows.map((row) => {
-    const obj = {} as SheetRow;
-    headers.forEach((key, i) => {
-      obj[key] = (row[i] ?? "").trim();
-    });
+  const idIndex = headerRow.findIndex((heading) => normalizeCell(heading).toLowerCase().includes("id"));
+  const modeIndex = headerRow.findIndex((heading) => normalizeCell(heading).toLowerCase().includes("mode"));
+  const keyIndex = headerRow.findIndex((heading) => normalizeCell(heading).toLowerCase().includes("key"));
 
-    const { song, artist } = splitSongWithArtist(obj.song_with_artist);
-    obj.song = song;
-    obj.artist = artist;
+  const mapping = new Map<string, SheetTrackMetadata>();
 
-    return obj;
+  dataRows.forEach((row) => {
+    if (!row.length) return;
+
+    const id = normalizeId(idIndex >= 0 ? row[idIndex] : undefined);
+    if (!id) return;
+
+    const metadata: SheetTrackMetadata = {
+      key: normalizeCell(keyIndex >= 0 ? row[keyIndex] : undefined),
+      mode: normalizeCell(modeIndex >= 0 ? row[modeIndex] : undefined),
+    };
+
+    mapping.set(id, metadata);
   });
 
-  return rows;
+  return mapping;
 }
