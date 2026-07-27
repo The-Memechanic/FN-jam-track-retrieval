@@ -156,7 +156,7 @@ export default function SearchClient() {
           href="/similarity"
           className="inline-flex items-center rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-neutral-200"
         >
-          Try similarity-based matching
+          Try Similarity Search
         </Link>
       </div>
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">

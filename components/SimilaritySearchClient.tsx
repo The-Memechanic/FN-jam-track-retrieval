@@ -143,20 +143,20 @@ const computeRanking = (
     .sort((a, b) => b.score - a.score);
 };
 
-// Score → ring color, from cool blue (low match) to warm amber (high match)
+// Score → ring color, from legendary (gold) to epic (purple) to rare (blue) to common (gray)
 const getScoreRingClass = (score: number) => {
-  if (score >= 0.75) return "ring-amber-400/70 dark:ring-amber-400/60";
-  if (score >= 0.5) return "ring-teal-400/70 dark:ring-teal-400/50";
-  if (score >= 0.25) return "ring-sky-400/60 dark:ring-sky-500/40";
-  return "ring-neutral-300/70 dark:ring-neutral-600/50";
-};
+  if (score >= 0.9) return "ring-amber-400 dark:ring-amber-600";
+  if (score >= 0.75) return "ring-purple-400 dark:ring-purple-600";
+  if (score >= 0.5) return "ring-sky-400 dark:ring-sky-600";
+  return "ring-neutral-300 dark:ring-neutral-600";
+}
 
 const getScoreTextClass = (score: number) => {
-  if (score >= 0.75) return "text-amber-600 dark:text-amber-400";
-  if (score >= 0.5) return "text-teal-600 dark:text-teal-400";
-  if (score >= 0.25) return "text-sky-600 dark:text-sky-400";
-  return "text-neutral-500 dark:text-neutral-400";
-};
+  if (score >= 0.9) return "text-amber-600 dark:text-amber-400";
+  if (score >= 0.75) return "text-purple-600 dark:text-purple-400";
+  if (score >= 0.5) return "text-sky-600 dark:text-sky-400";
+  return "text-neutral-700 dark:text-neutral-300";
+}
 
 export default function SimilaritySearchClient() {
   const [rows, setRows] = useState<TrackRow[]>([]);
@@ -260,7 +260,7 @@ export default function SimilaritySearchClient() {
           href="/"
           className="inline-flex items-center justify-center rounded-lg border bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-neutral-200"
         >
-          Back to main search
+          Back to Search
         </Link>
       </div>
 
