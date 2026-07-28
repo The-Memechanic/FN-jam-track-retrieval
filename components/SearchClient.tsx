@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Fuse from "fuse.js";
 import type { TrackRow } from "@/lib/fetchTracks";
 import { getTrackSlug } from "@/lib/trackSlug";
@@ -14,6 +14,58 @@ const SORT_OPTIONS = [
 ] as const;
 
 type SortOption = (typeof SORT_OPTIONS)[number]["value"];
+
+type SearchState = {
+  query: string;
+  genreFilter: string[];
+  sortOption: SortOption;
+  sortDirection: "asc" | "desc";
+  page: number;
+};
+
+const STORAGE_KEY = "fn-jam-track-search-state-v1";
+
+const getDefaultState = (): SearchState => ({
+  query: "",
+  genreFilter: [],
+  sortOption: "added",
+  sortDirection: "desc",
+  page: 1,
+});
+
+const readStoredState = (): SearchState => {
+  if (typeof window === "undefined") return getDefaultState();
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return getDefaultState();
+
+    const parsed = JSON.parse(raw) as Partial<SearchState>;
+    const defaultState = getDefaultState();
+
+    return {
+      query: typeof parsed.query === "string" ? parsed.query : defaultState.query,
+      genreFilter: Array.isArray(parsed.genreFilter) ? parsed.genreFilter : defaultState.genreFilter,
+      sortOption: SORT_OPTIONS.some((option) => option.value === parsed.sortOption)
+        ? (parsed.sortOption as SortOption)
+        : defaultState.sortOption,
+      sortDirection: parsed.sortDirection === "asc" ? "asc" : defaultState.sortDirection,
+      page: typeof parsed.page === "number" && parsed.page > 0 ? parsed.page : defaultState.page,
+    };
+  } catch {
+    return getDefaultState();
+  }
+};
+
+const writeStoredState = (state: SearchState) => {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Ignore storage failures so the UI still works.
+  }
+};
 
 const compareString = (a: string, b: string) =>
   a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
@@ -60,15 +112,17 @@ const equalsNormalized = (value: string, option: string) =>
   value.trim().toLowerCase() === option.trim().toLowerCase();
 
 export default function SearchClient() {
-  const [query, setQuery] = useState("");
-  const [genreFilter, setGenreFilter] = useState<string[]>([]);
-  const [sortOption, setSortOption] = useState<SortOption>("added");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-  const [page, setPage] = useState(1);
+  const initialState = useMemo(() => readStoredState(), []);
+  const [query, setQuery] = useState(initialState.query);
+  const [genreFilter, setGenreFilter] = useState<string[]>(initialState.genreFilter);
+  const [sortOption, setSortOption] = useState<SortOption>(initialState.sortOption);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">(initialState.sortDirection);
+  const [page, setPage] = useState(initialState.page);
   const [rows, setRows] = useState<TrackRow[]>([]);
   const [fetchedAt, setFetchedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasHydratedRef = useRef(false);
   const PAGE_SIZE = 20;
 
   useEffect(() => {
@@ -131,6 +185,20 @@ export default function SearchClient() {
   }, [page, results]);
 
   useEffect(() => {
+    if (!hasHydratedRef.current) {
+      hasHydratedRef.current = true;
+      return;
+    }
+
+    writeStoredState({ query, genreFilter, sortOption, sortDirection, page });
+  }, [query, genreFilter, sortOption, sortDirection, page]);
+
+  useEffect(() => {
+    if (!hasHydratedRef.current) {
+      hasHydratedRef.current = true;
+      return;
+    }
+
     setPage(1);
   }, [query, genreFilter, sortOption, sortDirection]);
 
@@ -211,7 +279,7 @@ export default function SearchClient() {
                   type="button"
                   onClick={() => setPage((current) => Math.max(1, current - 1))}
                   disabled={page === 1}
-                  className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                  className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-neutral-300 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-300 dark:focus:ring-neutral-900 dark:disabled:bg-white dark:disabled:text-neutral-400"
                 >
                   Go Back
                 </button>
@@ -219,7 +287,7 @@ export default function SearchClient() {
                   type="button"
                   onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
                   disabled={page === totalPages}
-                  className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                  className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-neutral-300 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-300 dark:focus:ring-neutral-900 dark:disabled:bg-white dark:disabled:text-neutral-400"
                 >
                   Keep Going
                 </button>
@@ -276,7 +344,7 @@ export default function SearchClient() {
                       type="button"
                       onClick={() => setPage((current) => Math.max(1, current - 1))}
                       disabled={page === 1}
-                      className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                      className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-neutral-300 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-300 dark:focus:ring-neutral-900 dark:disabled:bg-white dark:disabled:text-neutral-400"
                     >
                       Previous
                     </button>
@@ -284,7 +352,7 @@ export default function SearchClient() {
                       type="button"
                       onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
                       disabled={page === totalPages}
-                      className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                      className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-neutral-300 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-300 dark:focus:ring-neutral-900 dark:disabled:bg-white dark:disabled:text-neutral-400"
                     >
                       Next
                     </button>

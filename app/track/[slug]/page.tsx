@@ -14,8 +14,32 @@ const HIDDEN_KEYS = new Set([
   "key",
   "mode",
   "difficulty",
+  "gameplayTags",
   "previewUrl",
 ]);
+
+export const TRACK_COLUMNS = [
+  { key: "song", label: "Song" },
+  { key: "artist", label: "Artist" },
+  { key: "album", label: "Album" },
+  { key: "releaseYear", label: "Release year" },
+  { key: "bpm", label: "BPM" },
+  { key: "key", label: "Key" },
+  { key: "duration", label: "Duration" },
+  { key: "difficulty", label: "Difficulty" },
+  { key: "genres", label: "Genres" },
+  { key: "added", label: "Added" },
+] as const;
+
+const DETAIL_ORDER = [
+  "duration",
+  "key",
+  "bpm",
+  "releaseYear",
+  "added",
+  "album",
+  "genres",
+] as const;
 
 const DIFFICULTY_ORDER = [
   "vocals",
@@ -183,6 +207,10 @@ export default function TrackPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [slug]);
+
+  useEffect(() => {
     async function loadRows() {
       setLoading(true);
       try {
@@ -221,7 +249,24 @@ export default function TrackPage() {
       entries.push([key, value]);
     });
 
-    return entries;
+    return entries.sort(([a], [b]) => {
+      const aIndex = DETAIL_ORDER.indexOf(a as (typeof DETAIL_ORDER)[number]);
+      const bIndex = DETAIL_ORDER.indexOf(b as (typeof DETAIL_ORDER)[number]);
+
+      // Both exist in the custom order
+      if (aIndex !== -1 && bIndex !== -1) {
+        return aIndex - bIndex;
+      }
+
+      // a exists but b doesn't -> a comes first
+      if (aIndex !== -1) return -1;
+
+      // b exists but a doesn't -> b comes first
+      if (bIndex !== -1) return 1;
+
+      // Neither exists -> keep alphabetical order
+      return a.localeCompare(b);
+    });
   }, [track]);
 
   return (
