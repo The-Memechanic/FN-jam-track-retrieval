@@ -1,0 +1,219 @@
+import fs from "fs/promises";
+import path from "path";
+
+const TRACKS_FILE = path.join(process.cwd(), "data", "tracks.json");
+
+const SPARK_TRACKS_URL =
+  "https://fortnitecontent-website-prod07.ol.epicgames.com/content/api/pages/fortnite-game/spark-tracks";
+
+const REQUEST_DELAY_MS = 5000;
+
+async function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function save(data) {
+  await fs.mkdir(path.dirname(TRACKS_FILE), { recursive: true });
+  await fs.writeFile(TRACKS_FILE, JSON.stringify(data, null, 2), "utf8");
+}
+
+async function readExisting() {
+  try {
+    const raw = await fs.readFile(TRACKS_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    delete parsed._metadata;
+    return parsed;
+  } catch {
+    return {};
+  }
+}
+
+async function fetchSparkTracks() {
+  const res = await fetch(SPARK_TRACKS_URL);
+
+  if (!res.ok) {
+    throw new Error(
+      `Failed to fetch spark-tracks (status ${res.status}).`
+    );
+  }
+
+  const payload = await res.json();
+
+  return Object.values(payload)
+    .filter((entry) => entry?.track)
+    .map((entry) => entry.track);
+}
+
+function transformTrack(track, existing) {
+  return {
+    id: track.sn,
+    song: (track.tt ?? "").trim(),
+    artist: (track.an ?? "").trim(),
+    album: (track.ab ?? "").trim(),
+    releaseYear: Number.isFinite(track.ry) ? track.ry : null,
+    bpm: Number.isFinite(track.mt) ? track.mt : null,
+    duration: Number.isFinite(track.dn) ? track.dn : null,
+    difficulty: {
+      vocals: track.in?.vl ?? 0,
+      guitar: track.in?.gr ?? 0,
+      bass: track.in?.ba ?? 0,
+      drums: track.in?.ds ?? 0,
+      plasticVocals: track.in?.bd ?? 0,
+      plasticGuitar: track.in?.pg ?? 0,
+      plasticBass: track.in?.pb ?? 0,
+      plasticDrums: track.in?.pd ?? 0,
+    },
+    key: track.mk ?? "",
+    mode: track.mm ?? "",
+    genres: track.ge ?? [],
+    gameplayTags: track.gt ?? [],
+    albumArt: track.au ?? "",
+    added: existing?.added ?? new Date().toISOString(),
+    shopHistory: existing?.shopHistory ?? [],
+    previewUrl: existing?.previewUrl ?? null,
+  };
+}
+
+async function fetchPreviewUrl(track) {
+  let backoff = 5000;
+
+  while (true) {
+    try {
+      const query = encodeURIComponent(
+        `${track.artist} ${track.song}`
+      );
+
+      const url =
+        `https://itunes.apple.com/search?term=${query}` +
+        "&media=music&entity=song&limit=1";
+
+      const res = await fetch(url);
+
+      if (res.status === 403 || res.status === 429) {
+        console.warn(
+          `[RATE LIMITED] ${track.artist} - ${track.song}`
+        );
+        console.warn(`Sleeping ${backoff / 1000}s...`);
+
+        await sleep(backoff);
+
+        backoff = Math.min(backoff * 2, 30 * 60 * 1000);
+        continue;
+      }
+
+      if (!res.ok) {
+        console.warn(
+          `[HTTP ${res.status}] ${track.artist} - ${track.song}`
+        );
+        return null;
+      }
+
+      const text = await res.text();
+
+      let json;
+
+      try {
+        json = JSON.parse(text);
+      } catch {
+        console.warn(
+          `[INVALID JSON] ${track.artist} - ${track.song}`
+        );
+        return null;
+      }
+
+      if (!json.results?.length) {
+        console.log(
+          `[NO MATCH] ${track.artist} - ${track.song}`
+        );
+        return null;
+      }
+
+      const result = json.results[0];
+
+      console.log(
+        `Matched "${track.artist} - ${track.song}" -> "${result.artistName} - ${result.trackName}"`
+      );
+
+      if (!result.previewUrl) {
+        console.log("No preview URL in iTunes result.");
+        return null;
+      }
+
+      return result.previewUrl;
+    } catch (err) {
+      console.error(err);
+
+      console.warn(`Retrying in ${backoff / 1000}s...`);
+
+      await sleep(backoff);
+
+      backoff = Math.min(backoff * 2, 30 * 60 * 1000);
+    }
+  }
+}
+
+async function main() {
+  const existing = await readExisting();
+
+  const sparkTracks = await fetchSparkTracks();
+
+  const tracks = {};
+
+  for (const track of sparkTracks) {
+    if (!track.sn) continue;
+
+    tracks[track.sn] = transformTrack(
+      track,
+      existing[track.sn]
+    );
+  }
+
+  await save(tracks);
+
+  const pending = Object.values(tracks).filter(
+    (track) =>
+      track.artist !== "Epic Games" &&
+      !track.previewUrl
+  );
+
+  console.log(
+    `${pending.length} tracks still need preview URLs.\n`
+  );
+
+  for (let i = 0; i < pending.length; i++) {
+    const track = pending[i];
+
+    console.log(
+      `[${i + 1}/${pending.length}] ${track.artist} - ${track.song}`
+    );
+
+    const preview = await fetchPreviewUrl(track);
+
+    if (preview) {
+      tracks[track.id].previewUrl = preview;
+
+      console.log(`✓ Preview found`);
+      console.log(preview);
+
+      // Save immediately so no progress is lost.
+      await save(tracks);
+    } else {
+      console.log("✗ No preview available");
+    }
+
+    await sleep(REQUEST_DELAY_MS);
+
+    console.log("");
+  }
+
+  await save(tracks);
+
+  console.log(
+    `Finished. Wrote ${Object.keys(tracks).length} tracks.`
+  );
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
