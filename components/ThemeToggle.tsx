@@ -42,7 +42,7 @@ export default function ThemeToggle() {
     <button
       type="button"
       onClick={toggleTheme}
-      className="fixed right-4 top-4 z-50 inline-flex items-center gap-2 rounded-full border border-neutral-300 bg-white/80 px-3 py-2 text-sm font-medium text-neutral-700 shadow-sm backdrop-blur transition hover:bg-white dark:border-neutral-700 dark:bg-neutral-800/80 dark:text-neutral-100 dark:hover:bg-neutral-800"
+      className="inline-flex flex-shrink-0 items-center gap-2 rounded-full border border-neutral-300 bg-white/80 px-3 py-2 text-sm font-medium text-neutral-700 shadow-sm backdrop-blur transition hover:bg-white dark:border-neutral-700 dark:bg-neutral-800/80 dark:text-neutral-100 dark:hover:bg-neutral-800"
       aria-label="Toggle color theme"
     >
       <span aria-hidden="true">{theme === "dark" ? "☀️" : "🌙"}</span>

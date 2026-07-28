@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import Fuse from "fuse.js";
 import type { TrackRow } from "@/lib/fetchTracks";
+import { getTrackSlug } from "@/lib/trackSlug";
 
 const SORT_OPTIONS = [
   { value: "relevancy", label: "Relevancy" },
@@ -61,8 +62,8 @@ const equalsNormalized = (value: string, option: string) =>
 export default function SearchClient() {
   const [query, setQuery] = useState("");
   const [genreFilter, setGenreFilter] = useState<string[]>([]);
-  const [sortOption, setSortOption] = useState<SortOption>("relevancy");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [sortOption, setSortOption] = useState<SortOption>("added");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState<TrackRow[]>([]);
   const [fetchedAt, setFetchedAt] = useState<string | null>(null);
@@ -105,8 +106,8 @@ export default function SearchClient() {
 
   const fuse = useMemo(() => {
     return new Fuse(filteredRows, {
-      keys: ["song", "artist", "album", "devName"],
-      threshold: 0.35,
+      keys: ["song", "artist"],
+      threshold: 0.15,
       ignoreLocation: true,
     });
   }, [filteredRows]);
@@ -151,14 +152,6 @@ export default function SearchClient() {
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Link
-          href="/similarity"
-          className="inline-flex items-center rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-neutral-200"
-        >
-          Try Similarity Search
-        </Link>
-      </div>
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
         <aside className="rounded-lg border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
           <div className="flex flex-col gap-4">
@@ -242,9 +235,10 @@ export default function SearchClient() {
             <>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                 {paginatedResults.map((row, i) => (
-                  <div
+                  <Link
                     key={(page - 1) * PAGE_SIZE + i}
-                    className="group flex flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-3 transition-colors hover:border-neutral-400 dark:border-neutral-700 dark:bg-neutral-800 dark:hover:border-neutral-600"
+                    href={`/track/${getTrackSlug(row)}`}
+                    className="group flex flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-3 transition-colors hover:border-neutral-400 dark:border-neutral-700 dark:bg-neutral-800 dark:hover:border-neutral-400"
                   >
                     <div className="aspect-square w-full overflow-hidden rounded-md bg-neutral-100 dark:bg-neutral-800">
                       {row.albumArt ? (
@@ -252,7 +246,7 @@ export default function SearchClient() {
                           src={row.albumArt}
                           alt={row.song || "Album art"}
                           loading="lazy"
-                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                          className="h-full w-full object-cover transition-transform group-hover:scale-110"
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-xs text-neutral-400 dark:text-neutral-500">
@@ -268,7 +262,7 @@ export default function SearchClient() {
                         {row.artist || "Unknown artist"}
                       </p>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
 

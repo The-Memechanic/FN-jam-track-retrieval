@@ -1,6 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import ThemeToggle from "@/components/ThemeToggle";
+import Header from "@/components/Header";
 
 export const metadata: Metadata = {
   title: "Fortnite Jam Track Search",
@@ -28,7 +28,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body>
-        <ThemeToggle />
+        <Header />
         {children}
       </body>
     </html>

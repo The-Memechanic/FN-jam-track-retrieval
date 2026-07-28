@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import Fuse from "fuse.js";
 import type { TrackRow } from "@/lib/fetchTracks";
+import { useSearchParams } from "next/navigation";
+import { matchesTrackSlug, getTrackSlug } from "@/lib/trackSlug";
 
 type WeightState = {
   bpm: number;
@@ -169,6 +171,7 @@ export default function SimilaritySearchClient() {
   const [ranking, setRanking] = useState<RankedSong[]>([]);
   const [hasCalculated, setHasCalculated] = useState(false);
   const [page, setPage] = useState(1);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     async function loadRows() {
@@ -229,6 +232,19 @@ export default function SimilaritySearchClient() {
     setPage(1);
   }, [selectedRow, draftWeights]);
 
+  useEffect(() => {
+  if (loading || rows.length === 0) return;
+
+  const trackSlug = searchParams.get("track");
+  if (!trackSlug) return;
+
+  const match = rows.find((row) => matchesTrackSlug(row, trackSlug));
+  if (match) {
+    setSelectedSongKey(toRowKey(match));
+    setQuery(toDisplayLabel(match));
+  }
+}, [loading, rows, searchParams]);
+
   const handleBpmWeightChange = (value: number) => {
     const clampedValue = clampWeight(value);
     setDraftWeights({ bpm: clampedValue, key: clampWeight(1 - clampedValue) });
@@ -255,15 +271,6 @@ export default function SimilaritySearchClient() {
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Link
-          href="/"
-          className="inline-flex items-center justify-center rounded-lg border bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-neutral-200"
-        >
-          Back to Search
-        </Link>
-      </div>
-
       {loading ? (
         <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-6 text-center text-neutral-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400">
           Loading tracks…
@@ -369,19 +376,24 @@ export default function SimilaritySearchClient() {
             <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800">
               <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Selected track</h3>
               {selectedRow ? (
-                <div className="mt-3 overflow-hidden rounded-xl border border-neutral-200 bg-gradient-to-br from-white to-neutral-50 p-4 shadow-sm dark:border-neutral-600 dark:from-neutral-800 dark:to-neutral-900">
+                <Link
+                  href={`/track/${getTrackSlug(selectedRow)}`}
+                  className="group mt-3 block overflow-hidden rounded-xl border border-neutral-200 bg-gradient-to-br from-white to-neutral-50 p-4 shadow-sm transition hover:border-neutral-400 dark:border-neutral-600 dark:from-neutral-800 dark:to-neutral-900 dark:hover:border-neutral-400"
+                >
                   <div className="flex items-start gap-3">
-                    {selectedRow.albumArt ? (
-                      <img
-                        src={selectedRow.albumArt}
-                        alt={selectedRow.song || "Album art"}
-                        className="h-48 w-48 flex-shrink-0 rounded-lg object-cover shadow-sm ring-1 ring-black/5 dark:ring-white/10"
-                      />
-                    ) : (
-                      <div className="flex h-48 w-48 flex-shrink-0 items-center justify-center rounded-lg bg-neutral-900 text-lg font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900">
-                        ★
-                      </div>
-                    )}
+                    <div className="h-48 w-48 flex-shrink-0 overflow-hidden rounded-lg shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+                      {selectedRow.albumArt ? (
+                        <img
+                          src={selectedRow.albumArt}
+                          alt={selectedRow.song || "Album art"}
+                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-neutral-900 text-lg font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900">
+                          ★
+                        </div>
+                      )}
+                    </div>
                     <div className="min-w-0 pt-1">
                       <p className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">{selectedRow.song}</p>
                       <p className="text-sm text-neutral-600 dark:text-neutral-400">{selectedRow.artist || "Unknown artist"}</p>
@@ -397,7 +409,7 @@ export default function SimilaritySearchClient() {
                       </span>
                     ) : null}
                   </div>
-                </div>
+                </Link>
               ) : (
                 <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">Choose a track from the autocomplete to start ranking similar songs.</p>
               )}
@@ -463,7 +475,7 @@ export default function SimilaritySearchClient() {
                           ) : null}
                         </div>
 
-                        <div className="flex gap-1.5 text-[10px] text-neutral-400 dark:text-neutral-500">
+                        <div className="flex gap-1.5 text-[10px] text-neutral-500 dark:text-neutral-300">
                           <span>BPM sim {Math.round(item.bpmSimilarity * 100)}%</span>
                           <span>·</span>
                           <span>Key sim {Math.round(item.keySimilarity * 100)}%</span>
