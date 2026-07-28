@@ -381,33 +381,37 @@ export default function SimilaritySearchClient() {
                   className="group mt-3 block overflow-hidden rounded-xl border border-neutral-200 bg-gradient-to-br from-white to-neutral-50 p-4 shadow-sm transition hover:border-neutral-400 dark:border-neutral-600 dark:from-neutral-800 dark:to-neutral-900 dark:hover:border-neutral-400"
                 >
                   <div className="flex items-start gap-3">
-                    <div className="h-48 w-48 flex-shrink-0 overflow-hidden rounded-lg shadow-sm ring-1 ring-black/5 dark:ring-white/10">
-                      {selectedRow.albumArt ? (
-                        <img
-                          src={selectedRow.albumArt}
-                          alt={selectedRow.song || "Album art"}
-                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-neutral-900 text-lg font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900">
-                          ★
-                        </div>
-                      )}
+                    <div className="flex-shrink-0">
+                      <div className="h-48 w-48 overflow-hidden rounded-lg shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+                        {selectedRow.albumArt ? (
+                          <img
+                            src={selectedRow.albumArt}
+                            alt={selectedRow.song || "Album art"}
+                            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-neutral-900 text-lg font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900">
+                            ★
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-2 flex justify-center gap-6">
+                        {selectedRow.bpm != null ? (
+                          <span className="rounded-full bg-neutral-900/5 px-2.5 py-1 text-xs font-medium dark:bg-white/10">
+                            BPM {selectedRow.bpm}
+                          </span>
+                        ) : null}
+                        {selectedRow.key || selectedRow.mode ? (
+                          <span className="rounded-full bg-neutral-900/5 px-2.5 py-1 text-xs font-medium dark:bg-white/10">
+                            {selectedRow.key && selectedRow.mode ? `${selectedRow.key} ${selectedRow.mode}` : selectedRow.key || selectedRow.mode}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                     <div className="min-w-0 pt-1">
                       <p className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">{selectedRow.song}</p>
                       <p className="text-sm text-neutral-600 dark:text-neutral-400">{selectedRow.artist || "Unknown artist"}</p>
                     </div>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-neutral-600 dark:text-neutral-300">
-                    {selectedRow.bpm != null ? (
-                      <span className="rounded-full bg-neutral-900/5 px-2.5 py-1 font-medium dark:bg-white/10">BPM {selectedRow.bpm}</span>
-                    ) : null}
-                    {selectedRow.key || selectedRow.mode ? (
-                      <span className="rounded-full bg-neutral-900/5 px-2.5 py-1 font-medium dark:bg-white/10">
-                        {selectedRow.key && selectedRow.mode ? `${selectedRow.key} ${selectedRow.mode}` : selectedRow.key || selectedRow.mode}
-                      </span>
-                    ) : null}
                   </div>
                 </Link>
               ) : (
