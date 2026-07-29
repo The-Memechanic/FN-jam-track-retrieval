@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import type { TrackRow } from "@/lib/fetchTracks";
 import { getTrackSlug, matchesTrackSlug } from "@/lib/trackSlug";
+import { AudioPlayer } from "@/components/AudioPlayer";
 
 const HIDDEN_KEYS = new Set([
   "song",
@@ -327,7 +328,7 @@ export default function TrackPage() {
                     </p>
                   </div>
 
-                  <PreviewButton previewUrl={track.previewUrl} />
+                  <AudioPlayer previewUrl={track.previewUrl} />
                 </div>
 
                 <div className="flex h-64 items-center sm:border-l sm:border-neutral-200 sm:pl-6 sm:dark:border-neutral-700">
