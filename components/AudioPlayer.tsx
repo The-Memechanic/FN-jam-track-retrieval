@@ -42,7 +42,7 @@ export function AudioPlayer({ previewUrl }: { previewUrl: string | null }) {
 
   if (!previewUrl) {
     return (
-      <span className="self-start rounded-lg bg-neutral-200 px-4 py-2 text-sm font-medium text-neutral-500 dark:bg-neutral-700 dark:text-neutral-400">
+      <span className="self-start rounded-lg bg-bg-light px-4 py-2 text-sm font-medium text-text-muted">
         No preview available
       </span>
     );
@@ -91,10 +91,10 @@ export function AudioPlayer({ previewUrl }: { previewUrl: string | null }) {
 );
 
   const buttonStyles =
-    "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-neutral-900 text-white transition hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-neutral-200";
+    "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary text-bg-dark transition hover:bg-highlight";
 
   return (
-    <div className="flex w-full items-center gap-3 rounded-lg bg-neutral-200 px-3 py-2 dark:bg-neutral-700">
+    <div className="flex w-full items-center gap-3 rounded-lg bg-bg px-3 py-2 border border-border-muted">
       <button
         onClick={togglePlay}
         aria-label={playing ? "Pause preview" : "Play preview"}
@@ -104,7 +104,7 @@ export function AudioPlayer({ previewUrl }: { previewUrl: string | null }) {
       </button>
 
       <div className="flex flex-1 items-center gap-2">
-        <span className="w-9 flex-shrink-0 text-right text-xs tabular-nums text-neutral-500 dark:text-neutral-400">
+        <span className="w-9 flex-shrink-0 text-right text-xs tabular-nums text-text-muted">
           {formatTime(currentTime)}
         </span>
         <input
@@ -114,9 +114,9 @@ export function AudioPlayer({ previewUrl }: { previewUrl: string | null }) {
           step={0.1}
           value={currentTime}
           onChange={handleSeek}
-          className="h-1.5 w-full flex-1 cursor-pointer accent-neutral-900 dark:accent-neutral-100"
+          className="h-1.5 w-full flex-1 cursor-pointer accent-primary"
         />
-        <span className="w-9 flex-shrink-0 text-xs tabular-nums text-neutral-500 dark:text-neutral-400">
+        <span className="w-9 flex-shrink-0 text-xs tabular-nums text-text-muted">
           {formatTime(duration)}
         </span>
       </div>

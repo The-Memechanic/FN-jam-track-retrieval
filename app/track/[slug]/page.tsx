@@ -99,14 +99,12 @@ const formatAddedDate = (value: unknown): string => {
   });
 };
 
+// Three-stop gradient across the semantic status colors (success -> warning -> danger)
+// rather than a hardcoded neutral color ramp, so it follows the palette too.
 const difficultyColor = (displayValue: number): string => {
-  if (displayValue <= 1) return "bg-emerald-500";
-  if (displayValue <= 2) return "bg-lime-500";
-  if (displayValue <= 3) return "bg-yellow-500";
-  if (displayValue <= 4) return "bg-amber-500";
-  if (displayValue <= 5) return "bg-orange-500";
-  if (displayValue <= 6) return "bg-red-500";
-  return "bg-red-700";
+  if (displayValue <= 2) return "bg-success";
+  if (displayValue <= 4) return "bg-warning";
+  return "bg-danger";
 };
 
 function DifficultyDots({ value }: { value: number }) {
@@ -118,7 +116,7 @@ function DifficultyDots({ value }: { value: number }) {
         <span
           key={i}
           className={`h-3.5 w-3.5 rounded-full ${
-            i < filled ? difficultyColor(filled) : "bg-neutral-200 dark:bg-neutral-700"
+            i < filled ? difficultyColor(filled) : "bg-border-muted"
           }`}
         />
       ))}
@@ -140,9 +138,9 @@ function DifficultyBadges({ difficulty }: { difficulty: Record<string, unknown> 
         const displayValue = rawValue + DIFFICULTY_DISPLAY_OFFSET;
         return (
           <div key={key} className="flex flex-col gap-1">
-            <span className="text-sm font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-300">
+            <span className="text-sm font-semibold uppercase tracking-wide text-text-muted">
               {formatLabel(key)}{" "}
-              <span className="text-neutral-400 dark:text-neutral-400">({displayValue})</span>
+              <span className="text-text-muted/70">({displayValue})</span>
             </span>
             <DifficultyDots value={rawValue} />
           </div>
@@ -226,12 +224,12 @@ export default function TrackPage() {
   }, [track]);
 
   return (
-    <main className="min-h-screen bg-neutral-100 px-4 py-8 text-neutral-900 transition-colors dark:bg-neutral-900 dark:text-neutral-100">
+    <main className="min-h-screen bg-bg px-4 py-8 text-text transition-colors">
       <div className="mx-auto w-full max-w-6xl">
         <div className="mb-6 flex items-center justify-between gap-3">
           <Link
             href="/"
-            className="inline-flex items-center rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-neutral-200"
+            className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-bg-dark transition hover:bg-highlight"
           >
             ← Back to search
           </Link>
@@ -239,7 +237,7 @@ export default function TrackPage() {
           {track ? (
             <Link
               href={`/similarity?track=${getTrackSlug(track)}`}
-              className="inline-flex items-center rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-neutral-200"
+              className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-bg-dark transition hover:bg-highlight"
             >
               Find similar tracks →
             </Link>
@@ -247,38 +245,38 @@ export default function TrackPage() {
         </div>
 
         {loading ? (
-          <div className="rounded-lg border border-neutral-200 bg-white p-6 text-center text-neutral-600 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+          <div className="rounded-lg border border-border-muted bg-bg-light p-6 text-center text-text-muted shadow-sm">
             Loading track…
           </div>
         ) : error ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
+          <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger">
             Couldn&apos;t load the track: {error}
           </div>
         ) : !track ? (
-          <div className="rounded-lg border border-neutral-200 bg-white p-6 text-center text-neutral-600 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+          <div className="rounded-lg border border-border-muted bg-bg-light p-6 text-center text-text-muted shadow-sm">
             We couldn&apos;t find that track.
           </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
+          <div className="overflow-hidden rounded-xl border border-border-muted bg-bg-light shadow-sm">
             <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-stretch">
               {track.albumArt ? (
                 <img
                   src={track.albumArt}
                   alt={track.song || "Album art"}
-                  className="h-64 w-64 flex-shrink-0 rounded-lg object-cover shadow-sm ring-1 ring-black/5 dark:ring-white/10"
+                  className="h-64 w-64 flex-shrink-0 rounded-lg object-cover shadow-sm ring-1 ring-border-muted/30"
                 />
               ) : (
-                <div className="flex h-64 w-64 flex-shrink-0 items-center justify-center rounded-lg bg-neutral-900 text-2xl font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900">
+                <div className="flex h-64 w-64 flex-shrink-0 items-center justify-center rounded-lg bg-bg-dark text-2xl font-semibold text-text">
                   ★
                 </div>
               )}
               <div className="flex flex-1 flex-col gap-4 sm:flex-row sm:items-stretch sm:justify-between">
                 <div className="flex h-64 flex-1 flex-col justify-between gap-3">
                   <div>
-                    <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+                    <h1 className="text-2xl font-semibold text-text">
                       {track.song || "Untitled track"}
                     </h1>
-                    <p className="text-neutral-600 dark:text-neutral-300">
+                    <p className="text-text-muted">
                       {track.artist || "Unknown artist"}
                     </p>
                   </div>
@@ -286,7 +284,7 @@ export default function TrackPage() {
                   <AudioPlayer previewUrl={track.previewUrl} />
                 </div>
 
-                <div className="flex h-64 items-center sm:border-l sm:border-neutral-200 sm:pl-6 sm:dark:border-neutral-700">
+                <div className="flex h-64 items-center sm:border-l sm:border-border-muted sm:pl-6">
                   <DifficultyBadges
                     difficulty={track.difficulty as unknown as Record<string, unknown>}
                   />
@@ -294,7 +292,7 @@ export default function TrackPage() {
               </div>
             </div>
 
-            <dl className="grid grid-cols-1 gap-x-6 gap-y-4 border-t border-neutral-200 p-6 sm:grid-cols-2 dark:border-neutral-700">
+            <dl className="grid grid-cols-1 gap-x-6 gap-y-4 border-t border-border-muted p-6 sm:grid-cols-2">
               {details.map(([key, value]) => {
                 let displayValue: string;
                 if (key === "duration") {
@@ -307,10 +305,10 @@ export default function TrackPage() {
 
                 return (
                   <div key={key}>
-                    <dt className="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                    <dt className="text-xs font-medium uppercase tracking-wide text-text-muted">
                       {formatLabel(key)}
                     </dt>
-                    <dd className="mt-1 text-sm text-neutral-900 dark:text-neutral-100">
+                    <dd className="mt-1 text-sm text-text">
                       {displayValue}
                     </dd>
                   </div>

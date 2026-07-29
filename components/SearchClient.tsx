@@ -385,7 +385,7 @@ export default function SearchClient() {
 
   if (loading) {
     return (
-      <div className="mx-auto w-full max-w-4xl rounded-lg border border-neutral-200 bg-white p-6 text-center text-neutral-600 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+      <div className="mx-auto w-full max-w-4xl rounded-lg border border-border-muted bg-bg-light p-6 text-center text-text-muted shadow-sm">
         Loading Fortnite track data…
       </div>
     );
@@ -393,7 +393,7 @@ export default function SearchClient() {
 
   if (error) {
     return (
-      <div className="mx-auto w-full max-w-4xl rounded-lg border border-red-200 bg-red-50 p-6 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
+      <div className="mx-auto w-full max-w-4xl rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger">
         Couldn&apos;t load the tracks: {error}
       </div>
     );
@@ -402,25 +402,25 @@ export default function SearchClient() {
   return (
     <div className="mx-auto w-full max-w-6xl">
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-        <aside className="rounded-lg border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
+        <aside className="rounded-lg border border-border-muted bg-bg-light p-5 shadow-sm">
           <div className="flex flex-col gap-6">
             <div>
-              <label className="mb-2 block text-sm font-medium text-neutral-700 dark:text-neutral-300">Search</label>
+              <label className="mb-2 block text-sm font-medium text-text-muted">Search</label>
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search by song or artist…"
-                className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">Filters</h3>
+              <h3 className="text-sm font-semibold text-text">Filters</h3>
               <button
                 type="button"
                 onClick={resetFilters}
-                className="text-xs font-medium text-neutral-500 underline-offset-2 hover:underline dark:text-neutral-400"
+                className="text-xs font-medium text-text-muted underline-offset-2 hover:underline"
               >
                 Reset filters
               </button>
@@ -428,7 +428,7 @@ export default function SearchClient() {
 
             {keyOptions.length > 0 ? (
               <div>
-                <p className="mb-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">Key</p>
+                <p className="mb-2 text-sm font-medium text-text-muted">Key</p>
                 <div className="grid grid-cols-4 grid-rows-3 gap-2">
                   {keyOptions.map((option) => {
                     const active = keyFilter.includes(option.value);
@@ -439,8 +439,8 @@ export default function SearchClient() {
                         onClick={() => setKeyFilter((current) => toggleValue(current, option.value))}
                         className={`rounded-full border px-2.5 py-1 text-center text-xs font-medium transition ${
                           active
-                            ? "border-neutral-900 bg-neutral-900 text-white dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900"
-                            : "border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                            ? "border-primary bg-primary text-bg-dark"
+                            : "border-border bg-bg text-text-muted hover:bg-bg-dark"
                         }`}
                       >
                         {option.label}
@@ -453,7 +453,7 @@ export default function SearchClient() {
 
             {modeOptions.length > 0 ? (
               <div>
-                <p className="mb-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">Mode</p>
+                <p className="mb-2 text-sm font-medium text-text-muted">Mode</p>
                 <div className="flex flex-wrap gap-2">
                   {modeOptions.map((option) => {
                     const active = modeFilter.some((f) => equalsNormalized(f, option));
@@ -464,8 +464,8 @@ export default function SearchClient() {
                         onClick={() => setModeFilter((current) => toggleValue(current, option))}
                         className={`rounded-full border px-2.5 py-1 text-xs font-medium capitalize transition ${
                           active
-                            ? "border-neutral-900 bg-neutral-900 text-white dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900"
-                            : "border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                            ? "border-primary bg-primary text-bg-dark"
+                            : "border-border bg-bg text-text-muted hover:bg-bg-dark"
                         }`}
                       >
                         {option}
@@ -477,11 +477,11 @@ export default function SearchClient() {
             ) : null}
 
             <div>
-              <p className="mb-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">Difficulties (minimum)</p>
+              <p className="mb-2 text-sm font-medium text-text-muted">Difficulties (minimum)</p>
               <div className="space-y-2">
                 {DIFFICULTY_INSTRUMENTS.map((instrument) => (
                   <div key={instrument.key} className="flex items-center justify-between gap-2">
-                    <label htmlFor={`difficulty-${instrument.key}`} className="text-xs text-neutral-600 dark:text-neutral-400">
+                    <label htmlFor={`difficulty-${instrument.key}`} className="text-xs text-text-muted">
                       {instrument.label}
                     </label>
                     <select
@@ -493,7 +493,7 @@ export default function SearchClient() {
                           [instrument.key]: Number(e.target.value),
                         }))
                       }
-                      className="rounded-lg border border-neutral-300 bg-white px-2 py-1 text-xs text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                      className="rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                       <option value={0}>Any</option>
                       {[1, 2, 3, 4, 5, 6, 7].map((level) => (
@@ -508,9 +508,9 @@ export default function SearchClient() {
             </div>
 
             <div>
-              <div className="mb-2 flex items-center justify-between text-sm font-medium text-neutral-700 dark:text-neutral-300">
+              <div className="mb-2 flex items-center justify-between text-sm font-medium text-text-muted">
                 <span>BPM</span>
-                <span className="text-neutral-500 dark:text-neutral-400">
+                <span className="text-text-muted">
                   {bpmRange ? `${bpmRange[0]}–${bpmRange[1]}` : "—"}
                 </span>
               </div>
@@ -527,7 +527,7 @@ export default function SearchClient() {
                       return [Math.min(next, upper), upper];
                     });
                   }}
-                  className="w-full accent-neutral-900 dark:accent-neutral-400"
+                  className="w-full accent-primary"
                   aria-label="Minimum BPM"
                 />
                 <input
@@ -542,16 +542,16 @@ export default function SearchClient() {
                       return [lower, Math.max(next, lower)];
                     });
                   }}
-                  className="w-full accent-neutral-900 dark:accent-neutral-400"
+                  className="w-full accent-primary"
                   aria-label="Maximum BPM"
                 />
               </div>
             </div>
 
             <div>
-              <div className="mb-2 flex items-center justify-between text-sm font-medium text-neutral-700 dark:text-neutral-300">
+              <div className="mb-2 flex items-center justify-between text-sm font-medium text-text-muted">
                 <span>Duration</span>
-                <span className="text-neutral-500 dark:text-neutral-400">
+                <span className="text-text-muted">
                   {durationRange
                     ? `${formatDuration(durationRange[0])}–${formatDuration(durationRange[1])}`
                     : "—"}
@@ -570,7 +570,7 @@ export default function SearchClient() {
                       return [Math.min(next, upper), upper];
                     });
                   }}
-                  className="w-full accent-neutral-900 dark:accent-neutral-400"
+                  className="w-full accent-primary"
                   aria-label="Minimum duration"
                 />
                 <input
@@ -585,7 +585,7 @@ export default function SearchClient() {
                       return [lower, Math.max(next, lower)];
                     });
                   }}
-                  className="w-full accent-neutral-900 dark:accent-neutral-400"
+                  className="w-full accent-primary"
                   aria-label="Maximum duration"
                 />
               </div>
@@ -594,13 +594,13 @@ export default function SearchClient() {
         </aside>
 
         <section className="space-y-6">
-          <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 rounded-lg border border-border-muted bg-bg-light p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <span className="font-medium text-neutral-700 dark:text-neutral-300">Sort:</span>
+              <span className="font-medium text-text-muted">Sort:</span>
               <select
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value as SortOption)}
-                className="rounded-lg border border-neutral-300 bg-white px-2 py-1 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                className="rounded-lg border border-border bg-bg px-2 py-1 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 {SORT_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -612,13 +612,13 @@ export default function SearchClient() {
                 <button
                   type="button"
                   onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
-                  className="inline-flex items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 py-1 text-sm text-neutral-700 hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-bg px-3 py-1 text-sm text-text-muted hover:bg-bg-dark focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   {sortDirection === "asc" ? "Ascending" : "Descending"}
                 </button>
               ) : null}
             </div>
-            <div className="flex flex-col gap-2 text-sm text-neutral-500 dark:text-neutral-400 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-2 text-sm text-text-muted sm:flex-row sm:items-center">
               <span>
                 {results.length} of {filteredRows.length} track{filteredRows.length === 1 ? "" : "s"}
               </span>
@@ -627,7 +627,7 @@ export default function SearchClient() {
           </div>
 
           {totalPages > 1 ? (
-            <div className="mt-4 flex flex-col items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 sm:flex-row">
+            <div className="mt-4 flex flex-col items-center justify-between gap-3 rounded-lg border border-border-muted bg-bg-light p-4 text-sm text-text-muted shadow-sm sm:flex-row">
               <p>
                 Page {page} of {totalPages}
               </p>
@@ -636,7 +636,7 @@ export default function SearchClient() {
                   type="button"
                   onClick={() => setPage((current) => Math.max(1, current - 1))}
                   disabled={page === 1}
-                  className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-neutral-300 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-300 dark:focus:ring-neutral-900 dark:disabled:bg-white dark:disabled:text-neutral-400"
+                  className="rounded-lg border border-border bg-primary px-3 py-2 text-sm text-bg-dark disabled:cursor-not-allowed disabled:opacity-40 hover:bg-highlight focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   Go Back
                 </button>
@@ -644,7 +644,7 @@ export default function SearchClient() {
                   type="button"
                   onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
                   disabled={page === totalPages}
-                  className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-neutral-300 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-300 dark:focus:ring-neutral-900 dark:disabled:bg-white dark:disabled:text-neutral-400"
+                  className="rounded-lg border border-border bg-primary px-3 py-2 text-sm text-bg-dark disabled:cursor-not-allowed disabled:opacity-40 hover:bg-highlight focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   Keep Going
                 </button>
@@ -653,7 +653,7 @@ export default function SearchClient() {
           ) : null}
 
           {results.length === 0 ? (
-            <div className="rounded-lg border border-neutral-200 bg-white p-6 text-center text-neutral-500 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400">
+            <div className="rounded-lg border border-border-muted bg-bg-light p-6 text-center text-text-muted shadow-sm">
               No matches. Try a different search term.
             </div>
           ) : (
@@ -663,9 +663,9 @@ export default function SearchClient() {
                   <Link
                     key={(page - 1) * PAGE_SIZE + i}
                     href={`/track/${getTrackSlug(row)}`}
-                    className="group flex flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-3 transition-colors hover:border-neutral-400 dark:border-neutral-700 dark:bg-neutral-800 dark:hover:border-neutral-400"
+                    className="group flex flex-col gap-2 rounded-lg border border-border-muted bg-bg-light p-3 transition-colors hover:border-primary"
                   >
-                    <div className="aspect-square w-full overflow-hidden rounded-md bg-neutral-100 dark:bg-neutral-800">
+                    <div className="aspect-square w-full overflow-hidden rounded-md bg-bg-dark">
                       {row.albumArt ? (
                         <img
                           src={row.albumArt}
@@ -674,16 +674,16 @@ export default function SearchClient() {
                           className="h-full w-full object-cover transition-transform group-hover:scale-110"
                         />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-xs text-neutral-400 dark:text-neutral-500">
+                        <div className="flex h-full w-full items-center justify-center text-xs text-text-muted">
                           No image
                         </div>
                       )}
                     </div>
                     <div>
-                      <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                      <p className="truncate text-sm font-semibold text-text">
                         {row.song || "Untitled track"}
                       </p>
-                      <p className="truncate text-xs text-neutral-600 dark:text-neutral-400">
+                      <p className="truncate text-xs text-text-muted">
                         {row.artist || "Unknown artist"}
                       </p>
                     </div>
@@ -692,7 +692,7 @@ export default function SearchClient() {
               </div>
 
               {totalPages > 1 ? (
-                <div className="mt-4 flex flex-col items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 sm:flex-row">
+                <div className="mt-4 flex flex-col items-center justify-between gap-3 rounded-lg border border-border-muted bg-bg-light p-4 text-sm text-text-muted shadow-sm sm:flex-row">
                   <p>
                     Page {page} of {totalPages}
                   </p>
@@ -701,7 +701,7 @@ export default function SearchClient() {
                       type="button"
                       onClick={() => setPage((current) => Math.max(1, current - 1))}
                       disabled={page === 1}
-                      className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-neutral-300 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-300 dark:focus:ring-neutral-900 dark:disabled:bg-white dark:disabled:text-neutral-400"
+                      className="rounded-lg border border-border bg-primary px-3 py-2 text-sm text-bg-dark disabled:cursor-not-allowed disabled:opacity-40 hover:bg-highlight focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                       Go Back
                     </button>
@@ -709,7 +709,7 @@ export default function SearchClient() {
                       type="button"
                       onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
                       disabled={page === totalPages}
-                      className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-neutral-300 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-300 dark:focus:ring-neutral-900 dark:disabled:bg-white dark:disabled:text-neutral-400"
+                      className="rounded-lg border border-border bg-primary px-3 py-2 text-sm text-bg-dark disabled:cursor-not-allowed disabled:opacity-40 hover:bg-highlight focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                       Keep Going
                     </button>

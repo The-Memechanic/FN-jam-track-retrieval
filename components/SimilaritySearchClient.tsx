@@ -101,19 +101,20 @@ const computeRanking = (
     .sort((a, b) => b.score - a.score);
 };
 
-// Score → ring color, from legendary (gold) to epic (purple) to rare (blue) to common (gray)
+// Score → ring color, from legendary (gold) to epic (purple) to rare (blue) to common (neutral).
+// These stay independent of the theme palette so similarity tiers remain visually distinct.
 const getScoreRingClass = (score: number) => {
   if (score >= 0.9) return "ring-amber-400 dark:ring-amber-600";
   if (score >= 0.75) return "ring-purple-400 dark:ring-purple-600";
   if (score >= 0.5) return "ring-sky-400 dark:ring-sky-600";
-  return "ring-neutral-300 dark:ring-neutral-600";
+  return "ring-border-muted";
 }
 
 const getScoreTextClass = (score: number) => {
   if (score >= 0.9) return "text-amber-600 dark:text-amber-400";
   if (score >= 0.75) return "text-purple-600 dark:text-purple-400";
   if (score >= 0.5) return "text-sky-600 dark:text-sky-400";
-  return "text-neutral-700 dark:text-neutral-300";
+  return "text-text-muted";
 }
 
 export default function SimilaritySearchClient() {
@@ -228,19 +229,19 @@ export default function SimilaritySearchClient() {
   return (
     <div className="mx-auto w-full max-w-6xl">
       {loading ? (
-        <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-6 text-center text-neutral-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400">
+        <div className="rounded-lg border border-border-muted bg-bg-light p-6 text-center text-text-muted">
           Loading tracks…
         </div>
       ) : error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
+        <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger">
           Couldn&apos;t load tracks: {error}
         </div>
       ) : (
         <>
           <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="space-y-5">
-              <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800">
-                <label className="mb-2 block text-sm font-medium text-neutral-700 dark:text-neutral-300" htmlFor="song-search">
+              <div className="rounded-lg border border-border-muted bg-bg-light p-4">
+                <label className="mb-2 block text-sm font-medium text-text-muted" htmlFor="song-search">
                   Search for a song
                 </label>
                 <div className="relative">
@@ -257,10 +258,10 @@ export default function SimilaritySearchClient() {
                       window.setTimeout(() => setShowSuggestions(false), 120);
                     }}
                     placeholder="Type a song name…"
-                    className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none ring-0 focus:border-neutral-800 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                    className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text outline-none ring-0 focus:border-primary"
                   />
                   {suggestions.length > 0 ? (
-                    <ul className="absolute z-10 mt-2 max-h-64 w-full overflow-auto rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+                    <ul className="absolute z-10 mt-2 max-h-64 w-full overflow-auto rounded-lg border border-border-muted bg-bg shadow-lg">
                       {suggestions.map((song) => {
                         const label = toDisplayLabel(song);
                         return (
@@ -272,10 +273,10 @@ export default function SimilaritySearchClient() {
                                 setQuery(label);
                                 setShowSuggestions(false);
                               }}
-                              className="flex w-full flex-col items-start px-3 py-2 text-left text-sm text-neutral-700 transition hover:bg-neutral-50 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                              className="flex w-full flex-col items-start px-3 py-2 text-left text-sm text-text-muted transition hover:bg-bg-dark"
                             >
-                              <span className="font-medium text-neutral-900 dark:text-neutral-100">{song.song}</span>
-                              <span className="text-xs text-neutral-500 dark:text-neutral-400">{song.artist || "Unknown artist"}</span>
+                              <span className="font-medium text-text">{song.song}</span>
+                              <span className="text-xs text-text-muted">{song.artist || "Unknown artist"}</span>
                             </button>
                           </li>
                         );
@@ -285,19 +286,19 @@ export default function SimilaritySearchClient() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-800">
+              <div className="rounded-lg border border-border-muted bg-bg-light p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Similarity weights</h3>
-                    <p className="text-sm text-neutral-600 dark:text-neutral-400">Adjust the slider to recalculate the ranking.</p>
+                    <h3 className="text-base font-semibold text-text">Similarity weights</h3>
+                    <p className="text-sm text-text-muted">Adjust the slider to recalculate the ranking.</p>
                   </div>
                 </div>
 
                 <div className="mt-4 space-y-4">
-                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  <label className="block text-sm font-medium text-text-muted">
                     <div className="mb-2 flex items-center justify-between">
                       <span>BPM weight</span>
-                      <span className="text-neutral-500 dark:text-neutral-300">{draftWeights.bpm.toFixed(2)}</span>
+                      <span className="text-text-muted">{draftWeights.bpm.toFixed(2)}</span>
                     </div>
                     <input
                       type="range"
@@ -306,14 +307,14 @@ export default function SimilaritySearchClient() {
                       step="0.01"
                       value={draftWeights.bpm}
                       onChange={(event) => handleBpmWeightChange(Number(event.target.value))}
-                      className="w-full accent-neutral-900 dark:accent-neutral-400"
+                      className="w-full accent-primary"
                     />
                   </label>
 
-                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  <label className="block text-sm font-medium text-text-muted">
                     <div className="mb-2 flex items-center justify-between">
                       <span>Key weight</span>
-                      <span className="text-neutral-500 dark:text-neutral-300">{draftWeights.key.toFixed(2)}</span>
+                      <span className="text-text-muted">{draftWeights.key.toFixed(2)}</span>
                     </div>
                     <input
                       type="range"
@@ -322,23 +323,23 @@ export default function SimilaritySearchClient() {
                       step="0.01"
                       value={draftWeights.key}
                       onChange={(event) => handleKeyWeightChange(Number(event.target.value))}
-                      className="w-full accent-neutral-900 dark:accent-neutral-400"
+                      className="w-full accent-primary"
                     />
                   </label>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800">
-              <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Selected track</h3>
+            <div className="rounded-lg border border-border-muted bg-bg-light p-4">
+              <h3 className="text-base font-semibold text-text">Selected track</h3>
               {selectedRow ? (
                 <Link
                   href={`/track/${getTrackSlug(selectedRow)}`}
-                  className="group mt-3 block overflow-hidden rounded-xl border border-neutral-200 bg-gradient-to-br from-white to-neutral-50 p-4 shadow-sm transition hover:border-neutral-400 dark:border-neutral-600 dark:from-neutral-800 dark:to-neutral-900 dark:hover:border-neutral-400"
+                  className="group mt-3 block overflow-hidden rounded-xl border border-border-muted bg-gradient-to-br from-bg-light to-bg p-4 shadow-sm transition hover:border-primary"
                 >
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0">
-                      <div className="h-48 w-48 overflow-hidden rounded-lg shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+                      <div className="h-48 w-48 overflow-hidden rounded-lg shadow-sm ring-1 ring-border-muted">
                         {selectedRow.albumArt ? (
                           <img
                             src={selectedRow.albumArt}
@@ -346,19 +347,19 @@ export default function SimilaritySearchClient() {
                             className="h-full w-full object-cover transition-transform group-hover:scale-105"
                           />
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center bg-neutral-900 text-lg font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900">
+                          <div className="flex h-full w-full items-center justify-center bg-primary text-lg font-semibold text-bg-dark">
                             ★
                           </div>
                         )}
                       </div>
                       <div className="mt-2 flex justify-center gap-6">
                         {selectedRow.bpm != null ? (
-                          <span className="rounded-full bg-neutral-900/5 px-2.5 py-1 text-xs font-medium dark:bg-white/10">
+                          <span className="rounded-full bg-bg-dark px-2.5 py-1 text-xs font-medium text-text-muted">
                             BPM {selectedRow.bpm}
                           </span>
                         ) : null}
                         {selectedRow.key || selectedRow.mode ? (
-                          <span className="rounded-full bg-neutral-900/5 px-2.5 py-1 text-xs font-medium dark:bg-white/10">
+                          <span className="rounded-full bg-bg-dark px-2.5 py-1 text-xs font-medium text-text-muted">
                             {selectedRow.key && selectedRow.mode
                               ? `${formatKeyLabel(selectedRow.key)} ${selectedRow.mode}`
                               : formatKeyLabel(selectedRow.key) || selectedRow.mode}
@@ -367,13 +368,13 @@ export default function SimilaritySearchClient() {
                       </div>
                     </div>
                     <div className="min-w-0 pt-1">
-                      <p className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">{selectedRow.song}</p>
-                      <p className="text-sm text-neutral-600 dark:text-neutral-400">{selectedRow.artist || "Unknown artist"}</p>
+                      <p className="text-lg font-semibold text-text">{selectedRow.song}</p>
+                      <p className="text-sm text-text-muted">{selectedRow.artist || "Unknown artist"}</p>
                     </div>
                   </div>
                 </Link>
               ) : (
-                <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">Choose a track from the autocomplete to start ranking similar songs.</p>
+                <p className="mt-3 text-sm text-text-muted">Choose a track from the autocomplete to start ranking similar songs.</p>
               )}
             </div>
           </div>
@@ -381,20 +382,20 @@ export default function SimilaritySearchClient() {
           {/* Results: full-width, 5x2 grid, paginated across all matches */}
           <section className="mt-8">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Similar tracks</h2>
+              <h2 className="text-lg font-semibold text-text">Similar tracks</h2>
               {hasCalculated && ranking.length > 0 ? (
-                <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                <span className="text-sm text-text-muted">
                   Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, ranking.length)} of {ranking.length}
                 </span>
               ) : null}
             </div>
 
             {!hasCalculated ? (
-              <div className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-8 text-center text-sm text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400">
+              <div className="rounded-lg border border-dashed border-border bg-bg-light p-8 text-center text-sm text-text-muted">
                 Pick a track above to see its closest matches by BPM and key.
               </div>
             ) : ranking.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-8 text-center text-sm text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400">
+              <div className="rounded-lg border border-dashed border-border bg-bg-light p-8 text-center text-sm text-text-muted">
                 No similar tracks were found.
               </div>
             ) : (
@@ -406,12 +407,12 @@ export default function SimilaritySearchClient() {
                       <Link
                         key={toRowKey(item.row)}
                         href={`/track/${getTrackSlug(item.row)}`}
-                        className={`group relative flex flex-col gap-3 rounded-xl border border-neutral-200 bg-white p-3 shadow-sm ring-1 ring-inset transition hover:-translate-y-0.5 hover:shadow-md dark:border-neutral-700 dark:bg-neutral-800 ${getScoreRingClass(
+                        className={`group relative flex flex-col gap-3 rounded-xl border border-border-muted bg-bg-light p-3 shadow-sm ring-1 ring-inset transition hover:-translate-y-0.5 hover:shadow-md ${getScoreRingClass(
                           item.score
                         )}`}
                       >
                         <div className="flex items-start justify-between">
-                          <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-semibold text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
+                          <span className="rounded-full bg-bg-dark px-2 py-0.5 text-[11px] font-semibold text-text-muted">
                             #{rank}
                           </span>
                           <span className={`text-lg font-bold leading-none ${getScoreTextClass(item.score)}`}>
@@ -421,7 +422,7 @@ export default function SimilaritySearchClient() {
                         </div>
 
                         <div className="flex items-center gap-3">
-                          <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-900">
+                          <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-bg-dark">
                             {item.row.albumArt ? (
                               <img
                                 src={item.row.albumArt}
@@ -429,26 +430,26 @@ export default function SimilaritySearchClient() {
                                 className="h-16 w-16 object-cover transition-transform group-hover:scale-110"
                               />
                             ) : (
-                              <div className="flex h-16 w-16 items-center justify-center text-lg font-semibold text-neutral-400 dark:text-neutral-600">
+                              <div className="flex h-16 w-16 items-center justify-center text-lg font-semibold text-text-muted">
                                 ★
                               </div>
                             )}
                           </div>
 
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{item.row.song || "Untitled track"}</p>
-                            <p className="truncate text-xs text-neutral-600 dark:text-neutral-400">{item.row.artist || "Unknown artist"}</p>
+                            <p className="truncate text-sm font-semibold text-text">{item.row.song || "Untitled track"}</p>
+                            <p className="truncate text-xs text-text-muted">{item.row.artist || "Unknown artist"}</p>
                           </div>
                         </div>
 
-                        <div className="mt-auto flex flex-wrap gap-1.5 text-[11px] text-neutral-500 dark:text-neutral-300">
+                        <div className="mt-auto flex flex-wrap gap-1.5 text-[11px] text-text-muted">
                           {item.row.bpm != null ? (
-                            <span className="rounded-full bg-neutral-100 px-2 py-0.5 dark:bg-neutral-900">
+                            <span className="rounded-full bg-bg-dark px-2 py-0.5">
                               {item.row.bpm} BPM
                             </span>
                           ) : null}
                           {item.row.key || item.row.mode ? (
-                            <span className="rounded-full bg-neutral-100 px-2 py-0.5 dark:bg-neutral-900">
+                            <span className="rounded-full bg-bg-dark px-2 py-0.5">
                               {item.row.key && item.row.mode
                                 ? `${formatKeyLabel(item.row.key)} ${item.row.mode}`
                                 : formatKeyLabel(item.row.key) || item.row.mode}
@@ -456,7 +457,7 @@ export default function SimilaritySearchClient() {
                           ) : null}
                         </div>
 
-                        <div className="flex gap-1.5 text-[10px] text-neutral-500 dark:text-neutral-300">
+                        <div className="flex gap-1.5 text-[10px] text-text-muted">
                           <span>BPM sim {Math.round(item.bpmSimilarity * 100)}%</span>
                           <span>·</span>
                           <span>Key sim {Math.round(item.keySimilarity * 100)}%</span>
@@ -467,7 +468,7 @@ export default function SimilaritySearchClient() {
                 </div>
 
                 {totalPages > 1 ? (
-                  <div className="mt-6 flex flex-col items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white p-4 text-sm text-neutral-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 sm:flex-row">
+                  <div className="mt-6 flex flex-col items-center justify-between gap-3 rounded-lg border border-border-muted bg-bg-light p-4 text-sm text-text-muted shadow-sm sm:flex-row">
                     <p>
                       Page {page} of {totalPages}
                     </p>
@@ -476,7 +477,7 @@ export default function SimilaritySearchClient() {
                         type="button"
                         onClick={() => goToPage(page - 1)}
                         disabled={page === 1}
-                        className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                        className="rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-muted transition hover:bg-bg-dark disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         Go Back
                       </button>
@@ -484,7 +485,7 @@ export default function SimilaritySearchClient() {
                         type="button"
                         onClick={() => goToPage(page + 1)}
                         disabled={page === totalPages}
-                        className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                        className="rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-muted transition hover:bg-bg-dark disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         Keep Going
                       </button>

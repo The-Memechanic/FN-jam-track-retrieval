@@ -2,7 +2,7 @@ import SimilaritySearchClient from "@/components/SimilaritySearchClient";
 
 export default function SimilarityPage() {
   return (
-    <main className="min-h-screen bg-neutral-100 px-4 py-8 text-neutral-900 transition-colors dark:bg-neutral-900 dark:text-neutral-100">
+    <main className="min-h-screen bg-bg px-4 py-8 text-text transition-colors">
       <SimilaritySearchClient />
     </main>
   );
