@@ -14,14 +14,28 @@ async function sleep(ms) {
 
 async function save(data) {
   await fs.mkdir(path.dirname(TRACKS_FILE), { recursive: true });
-  await fs.writeFile(TRACKS_FILE, JSON.stringify(data, null, 2), "utf8");
+
+  const output = {
+    _metadata: {
+      lastUpdated: new Date().toISOString(),
+    },
+    ...data,
+  };
+
+  await fs.writeFile(
+    TRACKS_FILE,
+    JSON.stringify(output, null, 2),
+    "utf8"
+  );
 }
 
 async function readExisting() {
   try {
     const raw = await fs.readFile(TRACKS_FILE, "utf8");
     const parsed = JSON.parse(raw);
+
     delete parsed._metadata;
+
     return parsed;
   } catch {
     return {};

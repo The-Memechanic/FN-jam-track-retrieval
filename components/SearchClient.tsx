@@ -199,7 +199,7 @@ export default function SearchClient() {
 
         const data = await res.json();
         setRows(data.rows ?? []);
-        setFetchedAt(data.fetchedAt ?? new Date().toISOString());
+        setFetchedAt(data._metadata?.lastUpdated ?? null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load data");
       } finally {
@@ -622,7 +622,7 @@ export default function SearchClient() {
               <span>
                 {results.length} of {filteredRows.length} track{filteredRows.length === 1 ? "" : "s"}
               </span>
-              <span>Data last fetched {fetchedAt ? new Date(fetchedAt).toLocaleString() : "unknown"}</span>
+              <span>Data last fetched at {fetchedAt ? new Date(fetchedAt).toLocaleString() : "unknown"}</span>
             </div>
           </div>
 

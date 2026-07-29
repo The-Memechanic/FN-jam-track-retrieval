@@ -30,6 +30,13 @@ export type TrackRow = {
   previewUrl: string | null;
 };
 
+export type TrackDataResponse = {
+  rows: TrackRow[];
+  metadata: {
+    lastUpdated: string;
+  } | null;
+};
+
 const TRACKS_FILE = path.join(process.cwd(), "data", "tracks.json");
 
 export const TRACK_COLUMNS = [
@@ -47,9 +54,21 @@ export const TRACK_COLUMNS = [
 
 export type TrackColumnKey = (typeof TRACK_COLUMNS)[number]["key"];
 
-export async function fetchTrackData(): Promise<TrackRow[]> {
+export async function fetchTrackData(): Promise<TrackDataResponse> {
   const raw = await fs.readFile(TRACKS_FILE, "utf-8");
   const parsed = JSON.parse(raw) as Record<string, unknown>;
+  
+  // Extract metadata
+  const metadata = parsed._metadata as { lastUpdated: string } | undefined;
+  
+  // Remove metadata from the rows
   delete parsed._metadata;
-  return Object.values(parsed) as TrackRow[];
+  
+  // Convert the remaining object values to an array of TrackRow
+  const rows = Object.values(parsed) as TrackRow[];
+  
+  return {
+    rows,
+    metadata: metadata || null
+  };
 }
