@@ -190,11 +190,21 @@ async function main() {
     "john williams",
   ];
 
+  // These are songs that iTunes simply does not have so tough luck
+  const excludedSongs = [
+    "futw",
+    "blue english",
+    "rottweiler",
+    "iloveitiloveitiloveit",
+  ]
+
   const pending = Object.values(tracks).filter((track) => {
     const artist = track.artist.toLowerCase();
+    const song = track.song.toLowerCase();
 
     return (
       !excludedArtists.some((name) => artist.includes(name)) &&
+      !excludedSongs.some((name) => song.includes(name)) &&
       !track.previewUrl
     );
   });
