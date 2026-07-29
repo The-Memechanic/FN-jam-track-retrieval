@@ -169,11 +169,20 @@ async function main() {
 
   await save(tracks);
 
-  const pending = Object.values(tracks).filter(
-    (track) =>
-      track.artist !== "Epic Games" &&
+  const excludedArtists = [
+    "epic games",
+    "l1",
+    "tasty bois",
+  ];
+
+  const pending = Object.values(tracks).filter((track) => {
+    const artist = track.artist.toLowerCase();
+
+    return (
+      !excludedArtists.some((name) => artist.includes(name)) &&
       !track.previewUrl
-  );
+    );
+  });
 
   console.log(
     `${pending.length} tracks still need preview URLs.\n`
