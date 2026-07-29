@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Fuse from "fuse.js";
 import type { TrackRow } from "@/lib/fetchTracks";
 import { getTrackSlug } from "@/lib/trackSlug";
+import { getPitchClass, formatKeyLabel } from "@/lib/musicKey";
 
 const SORT_OPTIONS = [
   { value: "relevancy", label: "Relevancy" },
@@ -15,19 +16,44 @@ const SORT_OPTIONS = [
 
 type SortOption = (typeof SORT_OPTIONS)[number]["value"];
 
+const DIFFICULTY_INSTRUMENTS = [
+  { key: "vocals", label: "Vocals" },
+  { key: "guitar", label: "Guitar" },
+  { key: "bass", label: "Bass" },
+  { key: "drums", label: "Drums" },
+  { key: "plasticVocals", label: "Pro Vocals" },
+  { key: "plasticGuitar", label: "Pro Guitar" },
+  { key: "plasticBass", label: "Pro Bass" },
+  { key: "plasticDrums", label: "Pro Drums" },
+] as const;
+
 type SearchState = {
   query: string;
   genreFilter: string[];
+  keyFilter: string[];
+  modeFilter: string[];
+  difficultyFilters: Record<string, number>;
+  bpmMin: number | null;
+  bpmMax: number | null;
+  durationMin: number | null;
+  durationMax: number | null;
   sortOption: SortOption;
   sortDirection: "asc" | "desc";
   page: number;
 };
 
-const STORAGE_KEY = "fn-jam-track-search-state-v1";
+const STORAGE_KEY = "fn-jam-track-search-state-v2";
 
 const getDefaultState = (): SearchState => ({
   query: "",
   genreFilter: [],
+  keyFilter: [],
+  modeFilter: [],
+  difficultyFilters: {},
+  bpmMin: null,
+  bpmMax: null,
+  durationMin: null,
+  durationMax: null,
   sortOption: "added",
   sortDirection: "desc",
   page: 1,
@@ -46,6 +72,16 @@ const readStoredState = (): SearchState => {
     return {
       query: typeof parsed.query === "string" ? parsed.query : defaultState.query,
       genreFilter: Array.isArray(parsed.genreFilter) ? parsed.genreFilter : defaultState.genreFilter,
+      keyFilter: Array.isArray(parsed.keyFilter) ? parsed.keyFilter : defaultState.keyFilter,
+      modeFilter: Array.isArray(parsed.modeFilter) ? parsed.modeFilter : defaultState.modeFilter,
+      difficultyFilters:
+        parsed.difficultyFilters && typeof parsed.difficultyFilters === "object"
+          ? parsed.difficultyFilters
+          : defaultState.difficultyFilters,
+      bpmMin: typeof parsed.bpmMin === "number" ? parsed.bpmMin : defaultState.bpmMin,
+      bpmMax: typeof parsed.bpmMax === "number" ? parsed.bpmMax : defaultState.bpmMax,
+      durationMin: typeof parsed.durationMin === "number" ? parsed.durationMin : defaultState.durationMin,
+      durationMax: typeof parsed.durationMax === "number" ? parsed.durationMax : defaultState.durationMax,
       sortOption: SORT_OPTIONS.some((option) => option.value === parsed.sortOption)
         ? (parsed.sortOption as SortOption)
         : defaultState.sortOption,
@@ -75,6 +111,14 @@ const parseNumber = (value?: number | null) => (typeof value === "number" ? valu
 const parseDateValue = (value?: string): number | null => {
   const date = new Date(value ?? "");
   return Number.isNaN(date.getTime()) ? null : date.getTime();
+};
+
+const formatDuration = (seconds: number): string => {
+  const total = Math.round(seconds);
+  if (!Number.isFinite(total) || total < 0) return "—";
+  const minutes = Math.floor(total / 60);
+  const secs = total % 60;
+  return `${minutes}:${secs.toString().padStart(2, "0")}`;
 };
 
 const compareRows = (a: TrackRow, b: TrackRow, sortOption: SortOption) => {
@@ -111,10 +155,28 @@ const compareRows = (a: TrackRow, b: TrackRow, sortOption: SortOption) => {
 const equalsNormalized = (value: string, option: string) =>
   value.trim().toLowerCase() === option.trim().toLowerCase();
 
+const toggleValue = (list: string[], value: string) =>
+  list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
+
 export default function SearchClient() {
   const initialState = useMemo(() => readStoredState(), []);
   const [query, setQuery] = useState(initialState.query);
   const [genreFilter, setGenreFilter] = useState<string[]>(initialState.genreFilter);
+  const [keyFilter, setKeyFilter] = useState<string[]>(initialState.keyFilter);
+  const [modeFilter, setModeFilter] = useState<string[]>(initialState.modeFilter);
+  const [difficultyFilters, setDifficultyFilters] = useState<Record<string, number>>(
+    initialState.difficultyFilters
+  );
+  const [bpmRange, setBpmRange] = useState<[number, number] | null>(
+    initialState.bpmMin !== null && initialState.bpmMax !== null
+      ? [initialState.bpmMin, initialState.bpmMax]
+      : null
+  );
+  const [durationRange, setDurationRange] = useState<[number, number] | null>(
+    initialState.durationMin !== null && initialState.durationMax !== null
+      ? [initialState.durationMin, initialState.durationMax]
+      : null
+  );
   const [sortOption, setSortOption] = useState<SortOption>(initialState.sortOption);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">(initialState.sortDirection);
   const [page, setPage] = useState(initialState.page);
@@ -123,6 +185,7 @@ export default function SearchClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const hasHydratedRef = useRef(false);
+  const hasInitializedRangesRef = useRef(false);
   const PAGE_SIZE = 20;
 
   useEffect(() => {
@@ -147,16 +210,112 @@ export default function SearchClient() {
     loadRows();
   }, []);
 
+  const bpmBounds = useMemo(() => {
+    const values = rows
+      .map((r) => r.bpm)
+      .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+    if (values.length === 0) return { min: 0, max: 200 };
+    return { min: Math.floor(Math.min(...values)), max: Math.ceil(Math.max(...values)) };
+  }, [rows]);
+
+  const durationBounds = useMemo(() => {
+    const values = rows
+      .map((r) => r.duration)
+      .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+    if (values.length === 0) return { min: 0, max: 600 };
+    return { min: Math.floor(Math.min(...values)), max: Math.ceil(Math.max(...values)) };
+  }, [rows]);
+
+  const keyOptions = useMemo(() => {
+    const map = new Map<number, string>();
+    rows.forEach((r) => {
+      const pitchClass = getPitchClass(r.key);
+      if (pitchClass !== null && !map.has(pitchClass)) {
+        map.set(pitchClass, formatKeyLabel(r.key));
+      }
+    });
+    return Array.from(map.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([pitchClass, label]) => ({ value: String(pitchClass), label }));
+  }, [rows]);
+
+  const modeOptions = useMemo(() => {
+    const set = new Set<string>();
+    rows.forEach((r) => {
+      if (r.mode) set.add(r.mode);
+    });
+    return Array.from(set).sort(compareString);
+  }, [rows]);
+
+  // Initialize the range sliders to the full bounds once data has loaded,
+  // clamping any restored values so they stay within the current dataset.
+  useEffect(() => {
+    if (loading || hasInitializedRangesRef.current) return;
+    hasInitializedRangesRef.current = true;
+
+    setBpmRange((current) => {
+      if (!current) return [bpmBounds.min, bpmBounds.max];
+      return [
+        Math.max(bpmBounds.min, Math.min(current[0], bpmBounds.max)),
+        Math.max(bpmBounds.min, Math.min(current[1], bpmBounds.max)),
+      ];
+    });
+
+    setDurationRange((current) => {
+      if (!current) return [durationBounds.min, durationBounds.max];
+      return [
+        Math.max(durationBounds.min, Math.min(current[0], durationBounds.max)),
+        Math.max(durationBounds.min, Math.min(current[1], durationBounds.max)),
+      ];
+    });
+  }, [loading, bpmBounds, durationBounds]);
+
+  const isBpmNarrowed =
+    bpmRange !== null && (bpmRange[0] > bpmBounds.min || bpmRange[1] < bpmBounds.max);
+  const isDurationNarrowed =
+    durationRange !== null &&
+    (durationRange[0] > durationBounds.min || durationRange[1] < durationBounds.max);
+
   const filteredRows = useMemo(() => {
     return rows.filter((row) => {
-      return (
-        genreFilter.length === 0 ||
-        genreFilter.some((filterValue) =>
-          row.genres.some((genre) => equalsNormalized(genre, filterValue))
-        )
-      );
+      if (
+        genreFilter.length > 0 &&
+        !genreFilter.some((filterValue) => row.genres.some((genre) => equalsNormalized(genre, filterValue)))
+      ) {
+        return false;
+      }
+
+      if (keyFilter.length > 0) {
+        const rowPitchClass = getPitchClass(row.key);
+        if (rowPitchClass === null || !keyFilter.includes(String(rowPitchClass))) return false;
+      }
+
+      if (modeFilter.length > 0 && !(row.mode && modeFilter.some((f) => equalsNormalized(row.mode as string, f)))) {
+        return false;
+      }
+
+      const difficulty = row.difficulty as Record<string, number> | undefined;
+      for (const instrument of DIFFICULTY_INSTRUMENTS) {
+        const minLevel = difficultyFilters[instrument.key];
+        if (minLevel && minLevel > 0) {
+          const raw = difficulty?.[instrument.key];
+          if (typeof raw !== "number" || raw + 1 < minLevel) return false;
+        }
+      }
+
+      if (bpmRange && isBpmNarrowed) {
+        if (typeof row.bpm !== "number") return false;
+        if (row.bpm < bpmRange[0] || row.bpm > bpmRange[1]) return false;
+      }
+
+      if (durationRange && isDurationNarrowed) {
+        if (typeof row.duration !== "number") return false;
+        if (row.duration < durationRange[0] || row.duration > durationRange[1]) return false;
+      }
+
+      return true;
     });
-  }, [genreFilter, rows]);
+  }, [genreFilter, keyFilter, modeFilter, difficultyFilters, bpmRange, durationRange, isBpmNarrowed, isDurationNarrowed, rows]);
 
   const fuse = useMemo(() => {
     return new Fuse(filteredRows, {
@@ -190,8 +349,21 @@ export default function SearchClient() {
       return;
     }
 
-    writeStoredState({ query, genreFilter, sortOption, sortDirection, page });
-  }, [query, genreFilter, sortOption, sortDirection, page]);
+    writeStoredState({
+      query,
+      genreFilter,
+      keyFilter,
+      modeFilter,
+      difficultyFilters,
+      bpmMin: bpmRange ? bpmRange[0] : null,
+      bpmMax: bpmRange ? bpmRange[1] : null,
+      durationMin: durationRange ? durationRange[0] : null,
+      durationMax: durationRange ? durationRange[1] : null,
+      sortOption,
+      sortDirection,
+      page,
+    });
+  }, [query, genreFilter, keyFilter, modeFilter, difficultyFilters, bpmRange, durationRange, sortOption, sortDirection, page]);
 
   useEffect(() => {
     if (!hasHydratedRef.current) {
@@ -200,7 +372,16 @@ export default function SearchClient() {
     }
 
     setPage(1);
-  }, [query, genreFilter, sortOption, sortDirection]);
+  }, [query, genreFilter, keyFilter, modeFilter, difficultyFilters, bpmRange, durationRange, sortOption, sortDirection]);
+
+  const resetFilters = () => {
+    setGenreFilter([]);
+    setKeyFilter([]);
+    setModeFilter([]);
+    setDifficultyFilters({});
+    setBpmRange([bpmBounds.min, bpmBounds.max]);
+    setDurationRange([durationBounds.min, durationBounds.max]);
+  };
 
   if (loading) {
     return (
@@ -222,7 +403,7 @@ export default function SearchClient() {
     <div className="mx-auto w-full max-w-6xl">
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
         <aside className="rounded-lg border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-6">
             <div>
               <label className="mb-2 block text-sm font-medium text-neutral-700 dark:text-neutral-300">Search</label>
               <input
@@ -232,6 +413,182 @@ export default function SearchClient() {
                 placeholder="Search by song or artist…"
                 className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
               />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">Filters</h3>
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="text-xs font-medium text-neutral-500 underline-offset-2 hover:underline dark:text-neutral-400"
+              >
+                Reset filters
+              </button>
+            </div>
+
+            {keyOptions.length > 0 ? (
+              <div>
+                <p className="mb-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">Key</p>
+                <div className="grid grid-cols-4 grid-rows-3 gap-2">
+                  {keyOptions.map((option) => {
+                    const active = keyFilter.includes(option.value);
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setKeyFilter((current) => toggleValue(current, option.value))}
+                        className={`rounded-full border px-2.5 py-1 text-center text-xs font-medium transition ${
+                          active
+                            ? "border-neutral-900 bg-neutral-900 text-white dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900"
+                            : "border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            {modeOptions.length > 0 ? (
+              <div>
+                <p className="mb-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">Mode</p>
+                <div className="flex flex-wrap gap-2">
+                  {modeOptions.map((option) => {
+                    const active = modeFilter.some((f) => equalsNormalized(f, option));
+                    return (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => setModeFilter((current) => toggleValue(current, option))}
+                        className={`rounded-full border px-2.5 py-1 text-xs font-medium capitalize transition ${
+                          active
+                            ? "border-neutral-900 bg-neutral-900 text-white dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900"
+                            : "border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                        }`}
+                      >
+                        {option}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            <div>
+              <p className="mb-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">Difficulties (minimum)</p>
+              <div className="space-y-2">
+                {DIFFICULTY_INSTRUMENTS.map((instrument) => (
+                  <div key={instrument.key} className="flex items-center justify-between gap-2">
+                    <label htmlFor={`difficulty-${instrument.key}`} className="text-xs text-neutral-600 dark:text-neutral-400">
+                      {instrument.label}
+                    </label>
+                    <select
+                      id={`difficulty-${instrument.key}`}
+                      value={difficultyFilters[instrument.key] ?? 0}
+                      onChange={(e) =>
+                        setDifficultyFilters((current) => ({
+                          ...current,
+                          [instrument.key]: Number(e.target.value),
+                        }))
+                      }
+                      className="rounded-lg border border-neutral-300 bg-white px-2 py-1 text-xs text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                    >
+                      <option value={0}>Any</option>
+                      {[1, 2, 3, 4, 5, 6, 7].map((level) => (
+                        <option key={level} value={level}>
+                          {level === 7 ? level : `${level}+`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-2 flex items-center justify-between text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                <span>BPM</span>
+                <span className="text-neutral-500 dark:text-neutral-400">
+                  {bpmRange ? `${bpmRange[0]}–${bpmRange[1]}` : "—"}
+                </span>
+              </div>
+              <div className="space-y-2">
+                <input
+                  type="range"
+                  min={bpmBounds.min}
+                  max={bpmBounds.max}
+                  value={bpmRange ? bpmRange[0] : bpmBounds.min}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    setBpmRange((current) => {
+                      const upper = current ? current[1] : bpmBounds.max;
+                      return [Math.min(next, upper), upper];
+                    });
+                  }}
+                  className="w-full accent-neutral-900 dark:accent-neutral-400"
+                  aria-label="Minimum BPM"
+                />
+                <input
+                  type="range"
+                  min={bpmBounds.min}
+                  max={bpmBounds.max}
+                  value={bpmRange ? bpmRange[1] : bpmBounds.max}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    setBpmRange((current) => {
+                      const lower = current ? current[0] : bpmBounds.min;
+                      return [lower, Math.max(next, lower)];
+                    });
+                  }}
+                  className="w-full accent-neutral-900 dark:accent-neutral-400"
+                  aria-label="Maximum BPM"
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-2 flex items-center justify-between text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                <span>Duration</span>
+                <span className="text-neutral-500 dark:text-neutral-400">
+                  {durationRange
+                    ? `${formatDuration(durationRange[0])}–${formatDuration(durationRange[1])}`
+                    : "—"}
+                </span>
+              </div>
+              <div className="space-y-2">
+                <input
+                  type="range"
+                  min={durationBounds.min}
+                  max={durationBounds.max}
+                  value={durationRange ? durationRange[0] : durationBounds.min}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    setDurationRange((current) => {
+                      const upper = current ? current[1] : durationBounds.max;
+                      return [Math.min(next, upper), upper];
+                    });
+                  }}
+                  className="w-full accent-neutral-900 dark:accent-neutral-400"
+                  aria-label="Minimum duration"
+                />
+                <input
+                  type="range"
+                  min={durationBounds.min}
+                  max={durationBounds.max}
+                  value={durationRange ? durationRange[1] : durationBounds.max}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    setDurationRange((current) => {
+                      const lower = current ? current[0] : durationBounds.min;
+                      return [lower, Math.max(next, lower)];
+                    });
+                  }}
+                  className="w-full accent-neutral-900 dark:accent-neutral-400"
+                  aria-label="Maximum duration"
+                />
+              </div>
             </div>
           </div>
         </aside>

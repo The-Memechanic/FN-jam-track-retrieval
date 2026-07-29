@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import type { TrackRow } from "@/lib/fetchTracks";
 import { getTrackSlug, matchesTrackSlug } from "@/lib/trackSlug";
 import { AudioPlayer } from "@/components/AudioPlayer";
+import { formatKeyLabel } from "@/lib/musicKey";
 
 const HIDDEN_KEYS = new Set([
   "song",
@@ -191,7 +192,9 @@ export default function TrackPage() {
 
     const entries: [string, unknown][] = [];
 
-    const combinedKey = [track.key, track.mode].filter(Boolean).join(" ");
+    const combinedKey = [track.key ? formatKeyLabel(track.key) : null, track.mode]
+      .filter(Boolean)
+      .join(" ");
     if (combinedKey) {
       entries.push(["key", combinedKey]);
     }

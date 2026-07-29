@@ -6,6 +6,7 @@ import Fuse from "fuse.js";
 import type { TrackRow } from "@/lib/fetchTracks";
 import { useSearchParams } from "next/navigation";
 import { matchesTrackSlug, getTrackSlug } from "@/lib/trackSlug";
+import { getPitchClass, formatKeyLabel } from "@/lib/musicKey";
 
 type WeightState = {
   bpm: number;
@@ -33,51 +34,6 @@ const toRowKey = (row: TrackRow) => {
 };
 
 const parseBpm = (value?: number | null) => (typeof value === "number" ? value : null);
-
-const getPitchClass = (value?: string | null) => {
-  const raw = value?.trim() ?? "";
-  if (!raw) {
-    return null;
-  }
-
-  const normalized = raw
-    .replace(/[♯#]/g, "#")
-    .replace(/[♭b]/g, "b")
-    .replace(/\s+/g, "")
-    .toUpperCase();
-
-  const tokens = normalized.split("/").filter(Boolean);
-
-  const pitchMap: Record<string, number> = {
-    C: 0,
-    "C#": 1,
-    CB: 11,
-    D: 2,
-    "D#": 3,
-    DB: 1,
-    E: 4,
-    EB: 3,
-    F: 5,
-    "F#": 6,
-    GB: 6,
-    G: 7,
-    "G#": 8,
-    AB: 8,
-    A: 9,
-    "A#": 10,
-    BB: 10,
-    B: 11,
-  };
-
-  for (const token of tokens) {
-    const pitch = pitchMap[token];
-    if (pitch !== undefined) {
-      return pitch;
-    }
-  }
-
-  return null;
-};
 
 const getBpmSimilarity = (left?: number | null, right?: number | null) => {
   const leftBpm = parseBpm(left);
@@ -403,7 +359,9 @@ export default function SimilaritySearchClient() {
                         ) : null}
                         {selectedRow.key || selectedRow.mode ? (
                           <span className="rounded-full bg-neutral-900/5 px-2.5 py-1 text-xs font-medium dark:bg-white/10">
-                            {selectedRow.key && selectedRow.mode ? `${selectedRow.key} ${selectedRow.mode}` : selectedRow.key || selectedRow.mode}
+                            {selectedRow.key && selectedRow.mode
+                              ? `${formatKeyLabel(selectedRow.key)} ${selectedRow.mode}`
+                              : formatKeyLabel(selectedRow.key) || selectedRow.mode}
                           </span>
                         ) : null}
                       </div>
@@ -491,7 +449,9 @@ export default function SimilaritySearchClient() {
                           ) : null}
                           {item.row.key || item.row.mode ? (
                             <span className="rounded-full bg-neutral-100 px-2 py-0.5 dark:bg-neutral-900">
-                              {item.row.key && item.row.mode ? `${item.row.key} ${item.row.mode}` : item.row.key || item.row.mode}
+                              {item.row.key && item.row.mode
+                                ? `${formatKeyLabel(item.row.key)} ${item.row.mode}`
+                                : formatKeyLabel(item.row.key) || item.row.mode}
                             </span>
                           ) : null}
                         </div>
