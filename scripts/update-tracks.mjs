@@ -187,6 +187,7 @@ async function main() {
     "epic games",
     "l1",
     "tasty bois",
+    "john williams",
   ];
 
   const pending = Object.values(tracks).filter((track) => {

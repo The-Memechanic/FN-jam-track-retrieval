@@ -622,7 +622,7 @@ export default function SearchClient() {
               <span>
                 {results.length} of {filteredRows.length} track{filteredRows.length === 1 ? "" : "s"}
               </span>
-              <span>Data last fetched at {fetchedAt ? new Date(fetchedAt).toLocaleString() : "unknown"}</span>
+              <span>Data last updated at {fetchedAt ? new Date(fetchedAt).toLocaleString() : "unknown"}</span>
             </div>
           </div>
 
