@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import Header from "@/components/Header";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: "FestivalDB",
@@ -30,6 +31,7 @@ export default function RootLayout({
       <body>
         <Header />
         {children}
+        <Analytics />
       </body>
     </html>
   );
