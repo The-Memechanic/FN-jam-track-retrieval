@@ -703,7 +703,7 @@ export default function SearchClient() {
                       disabled={page === 1}
                       className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-neutral-300 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-300 dark:focus:ring-neutral-900 dark:disabled:bg-white dark:disabled:text-neutral-400"
                     >
-                      Previous
+                      Go Back
                     </button>
                     <button
                       type="button"
@@ -711,7 +711,7 @@ export default function SearchClient() {
                       disabled={page === totalPages}
                       className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-neutral-300 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-300 dark:focus:ring-neutral-900 dark:disabled:bg-white dark:disabled:text-neutral-400"
                     >
-                      Next
+                      Keep Going
                     </button>
                   </div>
                 </div>
