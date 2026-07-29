@@ -69,7 +69,6 @@ function transformTrack(track, existing) {
     gameplayTags: track.gt ?? [],
     albumArt: track.au ?? "",
     added: existing?.added ?? new Date().toISOString(),
-    shopHistory: existing?.shopHistory ?? [],
     previewUrl: existing?.previewUrl ?? null,
   };
 }

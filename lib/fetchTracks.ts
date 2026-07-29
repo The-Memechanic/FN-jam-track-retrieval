@@ -25,7 +25,6 @@ export type TrackRow = {
   gameplayTags: string[];
   albumArt: string;
   added: string;
-  shopHistory: string[];
   key: string;
   mode: string;
   previewUrl: string | null;

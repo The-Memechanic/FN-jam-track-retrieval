@@ -19,19 +19,6 @@ const HIDDEN_KEYS = new Set([
   "previewUrl",
 ]);
 
-export const TRACK_COLUMNS = [
-  { key: "song", label: "Song" },
-  { key: "artist", label: "Artist" },
-  { key: "album", label: "Album" },
-  { key: "releaseYear", label: "Release year" },
-  { key: "bpm", label: "BPM" },
-  { key: "key", label: "Key" },
-  { key: "duration", label: "Duration" },
-  { key: "difficulty", label: "Difficulty" },
-  { key: "genres", label: "Genres" },
-  { key: "added", label: "Added" },
-] as const;
-
 const DETAIL_ORDER = [
   "duration",
   "key",
@@ -61,6 +48,13 @@ const LABEL_OVERRIDES: Record<string, string> = {
   plasticGuitar: "Pro Guitar",
   plasticBass: "Pro Bass",
   plasticDrums: "Pro Drums",
+  duration: "Duration",
+  key: "Key",
+  bpm: "BPM",
+  releaseYear: "Release Year",
+  added: "Added In Game",
+  album: "Album",
+  genres: "Genres",
 };
 
 const formatLabel = (key: string) => {
@@ -145,57 +139,15 @@ function DifficultyBadges({ difficulty }: { difficulty: Record<string, unknown> 
         const displayValue = rawValue + DIFFICULTY_DISPLAY_OFFSET;
         return (
           <div key={key} className="flex flex-col gap-1">
-            <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+            <span className="text-sm font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-300">
               {formatLabel(key)}{" "}
-              <span className="text-neutral-400 dark:text-neutral-500">({displayValue})</span>
+              <span className="text-neutral-400 dark:text-neutral-400">({displayValue})</span>
             </span>
             <DifficultyDots value={rawValue} />
           </div>
         );
       })}
     </div>
-  );
-}
-
-function PreviewButton({ previewUrl }: { previewUrl: string | null }) {
-  const [playing, setPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  useEffect(() => {
-    if (!previewUrl) return;
-    const audio = new Audio(previewUrl);
-    audio.onended = () => setPlaying(false);
-    audioRef.current = audio;
-    return () => {
-      audio.pause();
-    };
-  }, [previewUrl]);
-
-  if (!previewUrl) {
-    return (
-      <span className="self-start rounded-lg bg-neutral-200 px-4 py-2 text-sm font-medium text-neutral-500 dark:bg-neutral-700 dark:text-neutral-400">
-        No preview available
-      </span>
-    );
-  }
-
-  const handleClick = () => {
-    if (playing) {
-      audioRef.current?.pause();
-      setPlaying(false);
-    } else {
-      audioRef.current?.play();
-      setPlaying(true);
-    }
-  };
-
-  return (
-    <button
-      onClick={handleClick}
-      className="inline-flex items-center gap-2 self-start rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-neutral-200"
-    >
-      {playing ? "Pause preview" : "▶ Play preview"}
-    </button>
   );
 }
 
@@ -323,7 +275,7 @@ export default function TrackPage() {
                     <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
                       {track.song || "Untitled track"}
                     </h1>
-                    <p className="text-neutral-600 dark:text-neutral-400">
+                    <p className="text-neutral-600 dark:text-neutral-300">
                       {track.artist || "Unknown artist"}
                     </p>
                   </div>

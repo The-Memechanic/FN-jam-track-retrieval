@@ -22,7 +22,7 @@ export default function Header() {
           Fortnite Jam Tracks
         </Link>
 
-        <nav className="flex items-center gap-1 rounded-lg border border-neutral-200 bg-neutral-100 p-1 dark:border-neutral-700 dark:bg-neutral-800">
+        <nav className="flex items-center gap-1 rounded-lg border border-neutral-200 bg-neutral-200 p-1 dark:border-neutral-700 dark:bg-neutral-800">
           {NAV_LINKS.map((link) => {
             const isActive = pathname === link.href;
             return (

@@ -200,7 +200,7 @@ export default function SimilaritySearchClient() {
 
     const fuse = new Fuse(rows, {
       keys: ["song", "artist", "album"],
-      threshold: 0.35,
+      threshold: 0.15,
       ignoreLocation: true,
       distance: 100,
     });
@@ -445,8 +445,9 @@ export default function SimilaritySearchClient() {
                   {paginatedRanking.map((item, index) => {
                     const rank = (page - 1) * PAGE_SIZE + index + 1;
                     return (
-                      <div
+                      <Link
                         key={toRowKey(item.row)}
+                        href={`/track/${getTrackSlug(item.row)}`}
                         className={`group relative flex flex-col gap-3 rounded-xl border border-neutral-200 bg-white p-3 shadow-sm ring-1 ring-inset transition hover:-translate-y-0.5 hover:shadow-md dark:border-neutral-700 dark:bg-neutral-800 ${getScoreRingClass(
                           item.score
                         )}`}
@@ -461,9 +462,25 @@ export default function SimilaritySearchClient() {
                           </span>
                         </div>
 
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{item.row.song || "Untitled track"}</p>
-                          <p className="truncate text-xs text-neutral-600 dark:text-neutral-400">{item.row.artist || "Unknown artist"}</p>
+                        <div className="flex items-center gap-3">
+                          <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-900">
+                            {item.row.albumArt ? (
+                              <img
+                                src={item.row.albumArt}
+                                alt={item.row.song || "Album art"}
+                                className="h-16 w-16 object-cover transition-transform group-hover:scale-110"
+                              />
+                            ) : (
+                              <div className="flex h-16 w-16 items-center justify-center text-lg font-semibold text-neutral-400 dark:text-neutral-600">
+                                ★
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{item.row.song || "Untitled track"}</p>
+                            <p className="truncate text-xs text-neutral-600 dark:text-neutral-400">{item.row.artist || "Unknown artist"}</p>
+                          </div>
                         </div>
 
                         <div className="mt-auto flex flex-wrap gap-1.5 text-[11px] text-neutral-500 dark:text-neutral-300">
@@ -484,7 +501,7 @@ export default function SimilaritySearchClient() {
                           <span>·</span>
                           <span>Key sim {Math.round(item.keySimilarity * 100)}%</span>
                         </div>
-                      </div>
+                      </Link>
                     );
                   })}
                 </div>
