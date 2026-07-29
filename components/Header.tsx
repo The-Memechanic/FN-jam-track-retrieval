@@ -33,7 +33,7 @@ export default function Header() {
           href="/"
           className="justify-self-start text-lg font-semibold tracking-tight text-text"
         >
-          Fortnite Jam Tracks
+          FestivalDB
         </Link>
 
         {/* Center: Navigation */}

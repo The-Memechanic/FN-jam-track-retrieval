@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Header from "@/components/Header";
 
 export const metadata: Metadata = {
-  title: "Fortnite Jam Track Search",
+  title: "FestivalDB",
   description: "Search for Fortnite Jam Tracks and find the information you need.",
 };
 
