@@ -165,6 +165,23 @@ async function fetchPreviewUrl(track) {
   }
 }
 
+function canonicalize(obj) {
+  if (Array.isArray(obj)) return obj.map(canonicalize);
+  if (obj && typeof obj === "object") {
+    return Object.keys(obj)
+      .sort()
+      .reduce((acc, key) => {
+        acc[key] = canonicalize(obj[key]);
+        return acc;
+      }, {});
+  }
+  return obj;
+}
+
+function isEqual(a, b) {
+  return JSON.stringify(canonicalize(a)) === JSON.stringify(canonicalize(b));
+}
+
 async function main() {
   const existing = await readExisting();
 
@@ -181,7 +198,12 @@ async function main() {
     );
   }
 
-  await save(tracks);
+  if (!isEqual(existing, tracks)) {
+    await save(tracks);
+    console.log("Track catalog changed — saved.\n");
+  } else {
+    console.log("No catalog changes detected — skipping save.\n");
+  }
 
   const excludedArtists = [
     "epic games",
@@ -238,8 +260,6 @@ async function main() {
 
     console.log("");
   }
-
-  await save(tracks);
 
   console.log(
     `Finished. Wrote ${Object.keys(tracks).length} tracks.`
