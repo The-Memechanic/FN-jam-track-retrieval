@@ -6,7 +6,7 @@ const TRACKS_FILE = path.join(process.cwd(), "data", "tracks.json");
 const SPARK_TRACKS_URL =
   "https://fortnitecontent-website-prod07.ol.epicgames.com/content/api/pages/fortnite-game/spark-tracks";
 
-const REQUEST_DELAY_MS = 2000;
+const REQUEST_DELAY_MS = 5000;
 
 async function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -87,79 +87,7 @@ function transformTrack(track, existing) {
   };
 }
 
-async function fetchDeezerPreview(track) {
-  let backoff = 2000;
-
-  while (true) {
-    try {
-      const query = encodeURIComponent(
-        `artist:"${track.artist}" track:"${track.song}"`
-      );
-
-      const url = `https://api.deezer.com/search?q=${query}&limit=1`;
-
-      const res = await fetch(url);
-
-      if (res.status === 429) {
-        console.warn(
-          `[DEEZER RATE LIMITED] ${track.artist} - ${track.song}`
-        );
-        console.warn(`Sleeping ${backoff / 1000}s...`);
-
-        await sleep(backoff);
-
-        backoff = Math.min(backoff * 2, 30 * 60 * 1000);
-        continue;
-      }
-
-      if (!res.ok) {
-        console.warn(
-          `[DEEZER HTTP ${res.status}] ${track.artist} - ${track.song}`
-        );
-        return null;
-      }
-
-      const json = await res.json();
-
-      if (json.error) {
-        console.warn(
-          `[DEEZER API ERROR] ${track.artist} - ${track.song}: ${json.error.message}`
-        );
-        return null;
-      }
-
-      if (!json.data?.length) {
-        console.log(
-          `[DEEZER NO MATCH] ${track.artist} - ${track.song}`
-        );
-        return null;
-      }
-
-      const result = json.data[0];
-
-      console.log(
-        `[Deezer] Matched "${track.artist} - ${track.song}" -> "${result.artist.name} - ${result.title}"`
-      );
-
-      if (!result.preview) {
-        console.log("[Deezer] No preview URL in result.");
-        return null;
-      }
-
-      return result.preview;
-    } catch (err) {
-      console.error(err);
-
-      console.warn(`Retrying Deezer in ${backoff / 1000}s...`);
-
-      await sleep(backoff);
-
-      backoff = Math.min(backoff * 2, 30 * 60 * 1000);
-    }
-  }
-}
-
-async function fetchItunesPreview(track) {
+async function fetchPreviewUrl(track) {
   let backoff = 5000;
 
   while (true) {
@@ -176,7 +104,7 @@ async function fetchItunesPreview(track) {
 
       if (res.status === 403 || res.status === 429) {
         console.warn(
-          `[ITUNES RATE LIMITED] ${track.artist} - ${track.song}`
+          `[RATE LIMITED] ${track.artist} - ${track.song}`
         );
         console.warn(`Sleeping ${backoff / 1000}s...`);
 
@@ -188,7 +116,7 @@ async function fetchItunesPreview(track) {
 
       if (!res.ok) {
         console.warn(
-          `[ITUNES HTTP ${res.status}] ${track.artist} - ${track.song}`
+          `[HTTP ${res.status}] ${track.artist} - ${track.song}`
         );
         return null;
       }
@@ -201,14 +129,14 @@ async function fetchItunesPreview(track) {
         json = JSON.parse(text);
       } catch {
         console.warn(
-          `[ITUNES INVALID JSON] ${track.artist} - ${track.song}`
+          `[INVALID JSON] ${track.artist} - ${track.song}`
         );
         return null;
       }
 
       if (!json.results?.length) {
         console.log(
-          `[ITUNES NO MATCH] ${track.artist} - ${track.song}`
+          `[NO MATCH] ${track.artist} - ${track.song}`
         );
         return null;
       }
@@ -216,11 +144,11 @@ async function fetchItunesPreview(track) {
       const result = json.results[0];
 
       console.log(
-        `[iTunes] Matched "${track.artist} - ${track.song}" -> "${result.artistName} - ${result.trackName}"`
+        `Matched "${track.artist} - ${track.song}" -> "${result.artistName} - ${result.trackName}"`
       );
 
       if (!result.previewUrl) {
-        console.log("[iTunes] No preview URL in result.");
+        console.log("No preview URL in iTunes result.");
         return null;
       }
 
@@ -228,27 +156,13 @@ async function fetchItunesPreview(track) {
     } catch (err) {
       console.error(err);
 
-      console.warn(`Retrying iTunes in ${backoff / 1000}s...`);
+      console.warn(`Retrying in ${backoff / 1000}s...`);
 
       await sleep(backoff);
 
       backoff = Math.min(backoff * 2, 30 * 60 * 1000);
     }
   }
-}
-
-async function fetchPreviewUrl(track) {
-  const deezerPreview = await fetchDeezerPreview(track);
-
-  if (deezerPreview) {
-    return deezerPreview;
-  }
-
-  console.log(
-    `[FALLBACK] No Deezer preview for ${track.artist} - ${track.song}, trying iTunes...`
-  );
-
-  return fetchItunesPreview(track);
 }
 
 function canonicalize(obj) {
@@ -293,15 +207,18 @@ async function main() {
 
   const excludedArtists = [
     "epic games",
+    "l1",
     "tasty bois",
-    "lisa",
     "john williams",
-    "nickeh30"
+    "bigger story music",
   ];
 
-  // These are songs that neither Deezer nor iTunes have, so tough luck
+  // These are songs that iTunes simply does not have so tough luck
   const excludedSongs = [
-    "bruno-san's theme song"
+    "futw",
+    "blue english",
+    "rottweiler",
+    "iloveitiloveitiloveit",
   ]
 
   const pending = Object.values(tracks).filter((track) => {
@@ -337,7 +254,7 @@ async function main() {
       // Save immediately so no progress is lost.
       await save(tracks);
     } else {
-      console.log("✗ No preview available from Deezer or iTunes");
+      console.log("✗ No preview available");
     }
 
     await sleep(REQUEST_DELAY_MS);
