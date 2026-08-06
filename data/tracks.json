@@ -1,6 +1,6 @@
 {
   "_metadata": {
-    "lastUpdated": "2026-07-30T22:04:57.248Z"
+    "lastUpdated": "2026-08-06T14:49:58.264Z"
   },
   "butterbarnhoedown": {
     "id": "butterbarnhoedown",
@@ -18809,5 +18809,57 @@
     "albumArt": "https://cdn2.unrealengine.com/1rehfonpb3y4lit7-512x512-d41f88858236.jpg",
     "added": "2026-07-30T22:04:56.803Z",
     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/c0/e9/7d/c0e97dd9-312a-dee3-48f4-5972a7a55927/mzaf_11435184871567455394.plus.aac.p.m4a"
+  },
+  "dietpepsi": {
+    "id": "dietpepsi",
+    "song": "Diet Pepsi",
+    "artist": "Addison Rae",
+    "album": "",
+    "releaseYear": 2025,
+    "bpm": 150,
+    "duration": 167,
+    "difficulty": {
+      "vocals": 3,
+      "guitar": 1,
+      "bass": 0,
+      "drums": 2,
+      "plasticVocals": 3,
+      "plasticGuitar": 1,
+      "plasticBass": 0,
+      "plasticDrums": 2
+    },
+    "key": "Bb",
+    "mode": "Major",
+    "genres": [],
+    "gameplayTags": [],
+    "albumArt": "https://cdn2.unrealengine.com/vjh7leeisbhiujxr-512x512-211f5cd69710.jpg",
+    "added": "2026-08-06T14:49:52.853Z",
+    "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/17/f1/2e/17f12ec5-3d97-517c-852d-0eaaa774f4b3/mzaf_3534918760930778525.plus.aac.p.m4a"
+  },
+  "fameisagun": {
+    "id": "fameisagun",
+    "song": "Fame is a Gun",
+    "artist": "Addison Rae",
+    "album": "",
+    "releaseYear": 2025,
+    "bpm": 138,
+    "duration": 186,
+    "difficulty": {
+      "vocals": 3,
+      "guitar": 1,
+      "bass": 1,
+      "drums": 2,
+      "plasticVocals": 3,
+      "plasticGuitar": 1,
+      "plasticBass": 1,
+      "plasticDrums": 1
+    },
+    "key": "Bb",
+    "mode": "Minor",
+    "genres": [],
+    "gameplayTags": [],
+    "albumArt": "https://cdn2.unrealengine.com/jih6cxdt0sthweii-512x512-9fdee63b453b.jpg",
+    "added": "2026-08-06T14:49:52.853Z",
+    "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/17/23/13/17231301-ae01-a266-d4de-edafda695460/mzaf_15532092001466073733.plus.aac.p.m4a"
   }
 }
